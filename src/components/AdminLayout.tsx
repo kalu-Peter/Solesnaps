@@ -1,0 +1,197 @@
+import { useState } from "react";
+import { Link, useLocation, Outlet } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  ShoppingCart,
+  Settings,
+  Menu,
+  LogOut,
+  BarChart3,
+  Bell,
+} from "lucide-react";
+
+const AdminLayout = () => {
+  const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navigationItems = [
+    {
+      title: "Dashboard",
+      href: "/admin",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Products",
+      href: "/admin/products",
+      icon: Package,
+    },
+    {
+      title: "Orders",
+      href: "/admin/orders",
+      icon: ShoppingCart,
+      badge: "12",
+    },
+    {
+      title: "Users",
+      href: "/admin/users",
+      icon: Users,
+    },
+    {
+      title: "Analytics",
+      href: "/admin/analytics",
+      icon: BarChart3,
+    },
+    {
+      title: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
+    },
+  ];
+
+  const isActiveRoute = (href: string) => {
+    if (href === "/admin") {
+      return location.pathname === "/admin";
+    }
+    return location.pathname.startsWith(href);
+  };
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="p-6 border-b border-[hsl(var(--sidebar-border))]">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-[hsl(var(--sidebar-primary))] flex items-center justify-center">
+            <span className="text-[hsl(var(--sidebar-primary-foreground))] font-bold text-sm">
+              T
+            </span>
+          </div>
+          <div>
+            <h2 className="font-bold text-lg text-[hsl(var(--sidebar-foreground))]">
+              TechStyle
+            </h2>
+            <p className="text-xs text-[hsl(var(--sidebar-foreground))]/70">
+              Admin Panel
+            </p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2">
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = isActiveRoute(item.href);
+
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                isActive
+                  ? "bg-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary-foreground))]"
+                  : "text-[hsl(var(--sidebar-foreground))]/70 hover:text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-accent))]"
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="font-medium">{item.title}</span>
+              {item.badge && (
+                <Badge
+                  variant={isActive ? "secondary" : "default"}
+                  className="ml-auto text-xs"
+                >
+                  {item.badge}
+                </Badge>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User Info */}
+      <div className="p-4 border-t border-[hsl(var(--sidebar-border))]">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-8 w-8 rounded-full bg-[hsl(var(--sidebar-primary))]/10 flex items-center justify-center">
+            <span className="text-sm font-medium text-[hsl(var(--sidebar-primary))]">
+              A
+            </span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[hsl(var(--sidebar-foreground))]">
+              Admin User
+            </p>
+            <p className="text-xs text-[hsl(var(--sidebar-foreground))]/70">
+              admin@techstyle.com
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-[hsl(var(--sidebar-foreground))]/70 hover:text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-accent))]"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Sign Out
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex flex-col bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))]">
+          <SidebarContent />
+        </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border bg-card">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">
+                T
+              </span>
+            </div>
+            <span className="font-bold text-foreground">TechStyle Admin</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon">
+              <Bell className="h-4 w-4" />
+            </Button>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="w-64 p-0 bg-[hsl(var(--sidebar-background))] border-r-[hsl(var(--sidebar-border))]"
+              >
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="lg:pl-64">
+        <main className="p-4 lg:p-8">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLayout;

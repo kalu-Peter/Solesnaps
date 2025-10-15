@@ -1,0 +1,23 @@
+const express = require('express');
+const router = express.Router();
+const productsController = require('../controllers/products');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { 
+  validateCreateProduct, 
+  validateUpdateProduct,
+  validateGetProducts
+} = require('../middleware/validation');
+
+// Public routes
+router.get('/', validateGetProducts, productsController.getProducts);
+router.get('/featured', productsController.getFeaturedProducts);
+router.get('/categories', productsController.getCategories);
+router.get('/:id', productsController.getProduct);
+router.get('/:id/reviews', productsController.getProductReviews);
+
+// Admin routes
+router.post('/', authenticateToken, requireAdmin, validateCreateProduct, productsController.createProduct);
+router.put('/:id', authenticateToken, requireAdmin, validateUpdateProduct, productsController.updateProduct);
+router.delete('/:id', authenticateToken, requireAdmin, productsController.deleteProduct);
+
+module.exports = router;
