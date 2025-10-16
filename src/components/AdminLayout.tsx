@@ -15,6 +15,7 @@ import {
   BarChart3,
   Bell,
   MapPin,
+  ShoppingBag,
 } from "lucide-react";
 
 const AdminLayout = () => {
@@ -99,14 +100,10 @@ const AdminLayout = () => {
       {/* Logo */}
       <div className="p-6 border-b border-[hsl(var(--sidebar-border))]">
         <Link to="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[hsl(var(--sidebar-primary))] flex items-center justify-center">
-            <span className="text-[hsl(var(--sidebar-primary-foreground))] font-bold text-sm">
-              T
-            </span>
-          </div>
+          <ShoppingBag className="h-8 w-8 text-[hsl(var(--sidebar-primary))]" />
           <div>
             <h2 className="font-bold text-lg text-[hsl(var(--sidebar-foreground))]">
-              TechStyle
+              SoleSnaps
             </h2>
             <p className="text-xs text-[hsl(var(--sidebar-foreground))]/70">
               Admin Panel
@@ -164,12 +161,8 @@ const AdminLayout = () => {
       <div className="lg:hidden">
         <div className="flex items-center justify-between p-4 border-b border-border bg-card">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">
-                T
-              </span>
-            </div>
-            <span className="font-bold text-foreground">TechStyle Admin</span>
+            <ShoppingBag className="h-6 w-6 text-primary" />
+            <span className="font-bold text-foreground">SoleSnaps Admin</span>
           </div>
 
           <div className="flex items-center gap-2">

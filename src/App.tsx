@@ -20,6 +20,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminUsers from "./pages/admin/AdminUsers";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
+import ResponsiveTest from "./pages/ResponsiveTest";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/new-arrivals" element={<NewArrivals />} />
               <Route path="/sale" element={<Sale />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/responsive-test" element={<ResponsiveTest />} />
               {/* Protected User Routes */}
               <Route
                 path="/profile"

@@ -510,8 +510,8 @@ const AdminUsers: React.FC = () => {
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="sm:col-span-2 lg:col-span-1">
               <Label htmlFor="search">Search</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -581,30 +581,42 @@ const AdminUsers: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Gender</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="min-w-[150px]">Name</TableHead>
+                    <TableHead className="min-w-[200px]">Email</TableHead>
+                    <TableHead className="min-w-[80px]">Role</TableHead>
+                    <TableHead className="min-w-[120px] hidden sm:table-cell">Phone</TableHead>
+                    <TableHead className="min-w-[80px] hidden md:table-cell">Gender</TableHead>
+                    <TableHead className="min-w-[80px]">Status</TableHead>
+                    <TableHead className="min-w-[100px] hidden lg:table-cell">Created</TableHead>
+                    <TableHead className="min-w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell>
-                        {user.first_name} {user.last_name}
+                      <TableCell className="font-medium">
+                        <div>
+                          <div>{user.first_name} {user.last_name}</div>
+                          <div className="text-xs text-muted-foreground sm:hidden">
+                            {user.phone || 'No phone'}
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div>{user.email}</div>
+                          <div className="text-xs text-muted-foreground md:hidden">
+                            {user.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'N/A'}
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                           {user.role}
                         </Badge>
                       </TableCell>
-                      <TableCell>{user.phone || '-'}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">{user.phone || '-'}</TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {user.gender ? (
                           <Badge variant="outline">
                             {user.gender.charAt(0).toUpperCase() + user.gender.slice(1)}
@@ -616,7 +628,7 @@ const AdminUsers: React.FC = () => {
                           {user.is_verified ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
