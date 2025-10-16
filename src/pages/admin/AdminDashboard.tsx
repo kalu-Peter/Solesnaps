@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -324,10 +325,12 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
                 <div className="mt-4 text-center">
-                  <Button variant="outline" size="sm">
-                    <Eye className="mr-2 h-4 w-4" />
-                    View All Orders
-                  </Button>
+                  <Link to="/admin/orders">
+                    <Button variant="outline" size="sm">
+                      <Eye className="mr-2 h-4 w-4" />
+                      View All Orders
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -372,10 +375,12 @@ const AdminDashboard = () => {
                   ))}
                 </div>
                 <div className="mt-4 text-center">
-                  <Button variant="outline" size="sm">
-                    <Eye className="mr-2 h-4 w-4" />
-                    View All Products
-                  </Button>
+                  <Link to="/admin/products">
+                    <Button variant="outline" size="sm">
+                      <Eye className="mr-2 h-4 w-4" />
+                      View All Products
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -389,22 +394,30 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Button className="h-20 flex-col gap-2 text-primary-foreground">
-                  <Package className="h-5 w-5" />
-                  <span className="text-sm font-medium">Add Product</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary">
-                  <Users className="h-5 w-5" />
-                  <span className="text-sm font-medium">Manage Users</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary">
-                  <ShoppingCart className="h-5 w-5" />
-                  <span className="text-sm font-medium">View Orders</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary">
-                  <TrendingUp className="h-5 w-5" />
-                  <span className="text-sm font-medium">Analytics</span>
-                </Button>
+                <Link to="/admin/products">
+                  <Button className="h-20 flex-col gap-2 text-primary-foreground w-full">
+                    <Package className="h-5 w-5" />
+                    <span className="text-sm font-medium">Add Product</span>
+                  </Button>
+                </Link>
+                <Link to="/admin/users">
+                  <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full">
+                    <Users className="h-5 w-5" />
+                    <span className="text-sm font-medium">Manage Users</span>
+                  </Button>
+                </Link>
+                <Link to="/admin/orders">
+                  <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full">
+                    <ShoppingCart className="h-5 w-5" />
+                    <span className="text-sm font-medium">View Orders</span>
+                  </Button>
+                </Link>
+                <Link to="/admin/analytics">
+                  <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full">
+                    <TrendingUp className="h-5 w-5" />
+                    <span className="text-sm font-medium">Analytics</span>
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
