@@ -226,64 +226,66 @@ const Sale = () => {
       {/* Products Section */}
       <section className="py-8">
         <div className="container mx-auto px-4">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between mb-8 p-4 bg-card rounded-lg border border-border">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                Showing {saleProducts.length} sale items
-              </span>
-              <Badge variant="destructive" className="text-xs animate-pulse">
-                <Flame className="h-3 w-3 mr-1" />
-                Hot Deals
-              </Badge>
-            </div>
+          {/* Enhanced Toolbar with Filters */}
+          <div className="bg-card rounded-lg border border-border p-4 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  Showing {saleProducts.length} sale items
+                </span>
+                <Badge variant="destructive" className="text-xs animate-pulse">
+                  <Flame className="h-3 w-3 mr-1" />
+                  Hot Deals
+                </Badge>
+              </div>
 
-            <div className="flex items-center gap-4">
-              <Select defaultValue="discount">
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="discount">Highest Discount</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
-                  <SelectItem value="stock">Stock Level</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-4">
+                <Select defaultValue="discount">
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="discount">Highest Discount</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="stock">Stock Level</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <div className="flex border border-border rounded-md">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <Grid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
+                <div className="flex border border-border rounded-md">
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Category Filters */}
-          <div className="flex flex-wrap gap-3 mb-8 justify-center">
-            <Button variant="default" size="sm">
-              All Categories
-            </Button>
-            <Button variant="outline" size="sm">
-              Shoes
-            </Button>
-            <Button variant="outline" size="sm">
-              30%+ Off
-            </Button>
-            <Button variant="outline" size="sm">
-              Low Stock
-            </Button>
+            {/* Category Filters Row */}
+            <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
+              <Button variant="default" size="sm">
+                All Categories
+              </Button>
+              <Button variant="outline" size="sm">
+                Shoes
+              </Button>
+              <Button variant="outline" size="sm">
+                30%+ Off
+              </Button>
+              <Button variant="outline" size="sm">
+                Low Stock
+              </Button>
+            </div>
           </div>
 
           {/* Products Grid */}
