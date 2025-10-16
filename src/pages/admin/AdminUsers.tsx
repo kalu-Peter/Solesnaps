@@ -266,9 +266,9 @@ const AdminUsers: React.FC = () => {
         email: formData.email.trim(),
         password: formData.password,
         role: 'admin',
-        phone: formData.phone.trim() || null,
-        date_of_birth: formData.date_of_birth || null,
-        gender: formData.gender || null
+        ...(formData.phone.trim() && { phone: formData.phone.trim() }),
+        ...(formData.date_of_birth && { date_of_birth: formData.date_of_birth }),
+        ...(formData.gender && { gender: formData.gender })
       };
 
       const response = await fetch('/api/users', {
@@ -294,6 +294,13 @@ const AdminUsers: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // If it's a validation error, show specific field errors
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const fieldErrors = errorData.details.map(detail => `${detail.field}: ${detail.message}`).join(', ');
+          throw new Error(`Validation errors: ${fieldErrors}`);
+        }
+        
         throw new Error(errorData.message || 'Failed to create admin user');
       }
 
@@ -322,8 +329,25 @@ const AdminUsers: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
       const updateData = { ...formData };
+      
+      // Don't send empty password
       if (!updateData.password) {
-        delete updateData.password; // Don't send empty password
+        delete updateData.password;
+      }
+      
+      // Don't send empty phone (will fail mobile phone validation)
+      if (!updateData.phone || updateData.phone.trim() === '') {
+        delete updateData.phone;
+      }
+      
+      // Don't send empty date_of_birth
+      if (!updateData.date_of_birth) {
+        delete updateData.date_of_birth;
+      }
+      
+      // Don't send empty gender
+      if (!updateData.gender) {
+        delete updateData.gender;
       }
 
       const response = await fetch(`/api/users/${selectedUser.id}`, {
@@ -337,6 +361,13 @@ const AdminUsers: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // If it's a validation error, show specific field errors
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const fieldErrors = errorData.details.map(detail => `${detail.field}: ${detail.message}`).join(', ');
+          throw new Error(`Validation errors: ${fieldErrors}`);
+        }
+        
         throw new Error(errorData.message || 'Failed to update user');
       }
 
@@ -750,9 +781,14 @@ const AdminUsers: React.FC = () => {
               <Label htmlFor="phone">Phone (Optional)</Label>
               <Input
                 id="phone"
+                type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="e.g., +1234567890 or 1234567890"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter a valid mobile phone number (optional)
+              </p>
             </div>
             <div>
               <Label htmlFor="date_of_birth">Date of Birth (Optional)</Label>
@@ -853,9 +889,14 @@ const AdminUsers: React.FC = () => {
               <Label htmlFor="edit_phone">Phone</Label>
               <Input
                 id="edit_phone"
+                type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="e.g., +1234567890 or 1234567890"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter a valid mobile phone number (leave empty to remove)
+              </p>
             </div>
             <div>
               <Label htmlFor="edit_date_of_birth">Date of Birth</Label>
