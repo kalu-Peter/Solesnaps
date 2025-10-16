@@ -23,7 +23,7 @@ import { productService, Product } from "@/services/productService";
 
 const Shoes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [priceRange, setPriceRange] = useState([0, 5000]);
+  const [priceRange, setPriceRange] = useState([0, 50000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sizeFormat, setSizeFormat] = useState<"US" | "UK">("US");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -39,7 +39,7 @@ const Shoes = () => {
       id: 201,
       name: "Sport Runner Pro",
       description: "High-performance running shoe",
-      price: "89.99",
+      price: "11500.00",
       stock_quantity: 25,
       brand: "Nike",
       colors: ["Black", "White"],
@@ -56,7 +56,7 @@ const Shoes = () => {
       id: 202,
       name: "Urban Classic",
       description: "Stylish casual shoe",
-      price: "79.99",
+      price: "10200.00",
       stock_quantity: 30,
       brand: "Adidas",
       colors: ["Brown", "Tan"],
@@ -73,7 +73,7 @@ const Shoes = () => {
       id: 203,
       name: "Air Max Elite",
       description: "Premium athletic shoe",
-      price: "129.99",
+      price: "16600.00",
       stock_quantity: 20,
       brand: "Nike",
       colors: ["White", "Blue"],
@@ -90,7 +90,7 @@ const Shoes = () => {
       id: 204,
       name: "Street Walker",
       description: "Urban style sneaker",
-      price: "95.99",
+      price: "12300.00",
       stock_quantity: 15,
       brand: "Puma",
       colors: ["Black", "Gray"],
@@ -107,7 +107,7 @@ const Shoes = () => {
       id: 205,
       name: "Performance Runner",
       description: "Professional running shoe",
-      price: "159.99",
+      price: "20500.00",
       stock_quantity: 12,
       brand: "Asics",
       colors: ["Blue", "Yellow"],
@@ -124,7 +124,7 @@ const Shoes = () => {
       id: 206,
       name: "Casual Comfort",
       description: "Everyday comfort shoe",
-      price: "69.99",
+      price: "8900.00",
       stock_quantity: 35,
       brand: "Sketchers",
       colors: ["Brown", "Black"],
@@ -141,7 +141,7 @@ const Shoes = () => {
       id: 207,
       name: "Trail Explorer",
       description: "Outdoor hiking shoe",
-      price: "189.99",
+      price: "24300.00",
       stock_quantity: 8,
       brand: "Merrill",
       colors: ["Green", "Brown"],
@@ -158,7 +158,7 @@ const Shoes = () => {
       id: 208,
       name: "City Sprint",
       description: "Urban running shoe",
-      price: "99.99",
+      price: "12800.00",
       stock_quantity: 18,
       brand: "New Balance",
       colors: ["White", "Red"],
@@ -320,9 +320,9 @@ const Shoes = () => {
                     <Slider
                       value={priceRange}
                       onValueChange={setPriceRange}
-                      max={5000}
+                      max={50000}
                       min={0}
-                      step={100}
+                      step={1000}
                       className="mb-3"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">

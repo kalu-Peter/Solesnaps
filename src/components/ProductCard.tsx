@@ -59,8 +59,13 @@ export default function ProductCard(props: ProductCardProps) {
   // Use category_name from API or fallback to legacy category
   const displayCategory = category_name || legacyCategory || brand;
 
-  // Format price if it's a number
-  const displayPrice = typeof price === 'string' ? price : `$${parseFloat(price).toFixed(2)}`;
+  // Format price to KES currency
+  const formatPrice = (priceValue: string | number) => {
+    const numericPrice = typeof priceValue === 'string' ? parseFloat(priceValue.replace(/[^0-9.]/g, '')) : priceValue;
+    return `KES ${numericPrice.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const displayPrice = formatPrice(price);
 
   const handleAddToCart = () => {
     addItem({
