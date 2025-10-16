@@ -34,6 +34,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -87,6 +97,7 @@ interface Product {
   sku?: string;
   is_featured: boolean;
   is_active: boolean;
+  gender?: string;
   created_at: string;
   updated_at: string;
 }
@@ -110,10 +121,12 @@ const AdminProducts = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -291,6 +304,97 @@ const AdminProducts = () => {
     }
   };
 
+  const updateProduct = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('auth_token');
+
+      const productData = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        price: parseFloat(formData.price),
+        stock_quantity: parseInt(formData.stock_quantity),
+        category_id: parseInt(formData.category_id),
+        brand: formData.brand.trim(),
+        colors: formData.colors,
+        sizes: formData.sizes,
+        is_featured: formData.is_featured,
+        gender: formData.gender === "none" ? undefined : formData.gender,
+      };
+
+      const response = await fetch(`http://localhost:5000/api/products/${selectedProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update product');
+      }
+
+      toast({
+        title: "Success",
+        description: "Product updated successfully",
+      });
+
+      setIsEditDialogOpen(false);
+      setSelectedProduct(null);
+      resetForm();
+      fetchProducts();
+    } catch (error: any) {
+      console.error('Error updating product:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update product",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteProduct = async () => {
+    if (!productToDelete) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      const response = await fetch(`http://localhost:5000/api/products/${productToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete product');
+      }
+
+      toast({
+        title: "Success",
+        description: "Product deleted successfully",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setProductToDelete(null);
+      fetchProducts();
+    } catch (error: any) {
+      console.error('Error deleting product:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete product",
+        variant: "destructive",
+      });
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -307,6 +411,7 @@ const AdminProducts = () => {
     });
     setSelectedFiles([]);
     setImagePreviews([]);
+    setSelectedProduct(null);
   };
 
   const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,7 +543,34 @@ const AdminProducts = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createProduct();
+    if (selectedProduct) {
+      updateProduct();
+    } else {
+      createProduct();
+    }
+  };
+
+  const openEditDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description || "",
+      price: product.price,
+      stock_quantity: product.stock_quantity.toString(),
+      category_id: product.category_id.toString(),
+      brand: product.brand,
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      images: [],
+      is_featured: product.is_featured,
+      gender: product.gender || "none",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (product: Product) => {
+    setProductToDelete(product);
+    setIsDeleteDialogOpen(true);
   };
 
   return (
@@ -667,6 +799,195 @@ const AdminProducts = () => {
         </Dialog>
       </div>
 
+      {/* Edit Product Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Update product information
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Product Name *</Label>
+                <Input 
+                  id="edit-name" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Enter product name" 
+                  required 
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-price">Price *</Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-stock">Stock Quantity *</Label>
+                  <Input 
+                    id="edit-stock" 
+                    type="number" 
+                    value={formData.stock_quantity}
+                    onChange={(e) => setFormData({...formData, stock_quantity: e.target.value})}
+                    placeholder="0" 
+                    min="0"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-category">Category *</Label>
+                  <Select 
+                    value={formData.category_id} 
+                    onValueChange={(value) => setFormData({...formData, category_id: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-brand">Brand *</Label>
+                  <Input 
+                    id="edit-brand" 
+                    value={formData.brand}
+                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                    placeholder="Product brand" 
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-gender">Gender</Label>
+                <Select 
+                  value={formData.gender} 
+                  onValueChange={(value) => setFormData({...formData, gender: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="unisex">Unisex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Enter product description"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-colors">Colors (comma separated)</Label>
+                  <Input
+                    id="edit-colors"
+                    value={formData.colors.join(', ')}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)
+                    })}
+                    placeholder="Red, Blue, Black"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-sizes">Sizes (comma separated)</Label>
+                  <Input
+                    id="edit-sizes"
+                    value={formData.sizes.join(', ')}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      sizes: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                    })}
+                    placeholder="S, M, L, XL"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="edit_is_featured"
+                  checked={formData.is_featured}
+                  onChange={(e) => setFormData({...formData, is_featured: e.target.checked})}
+                  className="rounded"
+                />
+                <Label htmlFor="edit_is_featured">Featured Product</Label>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setSelectedProduct(null);
+                  resetForm();
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Updating..." : "Update Product"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Product Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the product "{productToDelete?.name}". 
+              This action cannot be undone and will remove all associated data including images and order history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteProduct} className="bg-destructive text-destructive-foreground">
+              Delete Product
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Filters and Search */}
       <Card>
         <CardHeader>
@@ -800,12 +1121,15 @@ const AdminProducts = () => {
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditDialog(product)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Product
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => openDeleteDialog(product)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete Product
                             </DropdownMenuItem>
