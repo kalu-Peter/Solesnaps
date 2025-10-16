@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -13,11 +14,39 @@ import {
   LogOut,
   BarChart3,
   Bell,
+  MapPin,
 } from "lucide-react";
 
 const AdminLayout = () => {
   const location = useLocation();
+  const { token } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [orderCount, setOrderCount] = useState<number>(0);
+
+  // Fetch order count for badge
+  useEffect(() => {
+    const fetchOrderCount = async () => {
+      if (!token) return;
+      
+      try {
+        const response = await fetch('/api/orders?limit=1', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setOrderCount(data.data.pagination?.total_orders || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch order count:', error);
+      }
+    };
+
+    fetchOrderCount();
+  }, [token]);
 
   const navigationItems = [
     {
@@ -34,7 +63,12 @@ const AdminLayout = () => {
       title: "Orders",
       href: "/admin/orders",
       icon: ShoppingCart,
-      badge: "12",
+      badge: orderCount > 0 ? orderCount.toString() : undefined,
+    },
+    {
+      title: "Delivery Locations",
+      href: "/admin/delivery-locations",
+      icon: MapPin,
     },
     {
       title: "Users",
@@ -113,32 +147,7 @@ const AdminLayout = () => {
         })}
       </nav>
 
-      {/* User Info */}
-      <div className="p-4 border-t border-[hsl(var(--sidebar-border))]">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-8 w-8 rounded-full bg-[hsl(var(--sidebar-primary))]/10 flex items-center justify-center">
-            <span className="text-sm font-medium text-[hsl(var(--sidebar-primary))]">
-              A
-            </span>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[hsl(var(--sidebar-foreground))]">
-              Admin User
-            </p>
-            <p className="text-xs text-[hsl(var(--sidebar-foreground))]/70">
-              admin@techstyle.com
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-[hsl(var(--sidebar-foreground))]/70 hover:text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-accent))]"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
-        </Button>
-      </div>
+      
     </div>
   );
 

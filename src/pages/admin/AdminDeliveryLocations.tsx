@@ -70,7 +70,12 @@ const AdminDeliveryLocations: React.FC = () => {
       }
 
       const data = await response.json();
-      setLocations(data.data.locations);
+      // Convert string numbers to actual numbers for consistency
+      const locationsWithNumbers = data.data.locations.map((location: any) => ({
+        ...location,
+        shopping_amount: parseFloat(location.shopping_amount || 0)
+      }));
+      setLocations(locationsWithNumbers);
     } catch (error: any) {
       console.error('Error fetching delivery locations:', error);
       toast({
