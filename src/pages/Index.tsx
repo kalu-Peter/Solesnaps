@@ -9,12 +9,18 @@ import headphones from "@/assets/headphones.jpg";
 import smartwatch from "@/assets/smartwatch.jpg";
 import { ArrowRight, Package, Shield, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { productService, Product } from "@/services/productService";
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleGenderFilter = (gender: string) => {
+    navigate(`/shoes?gender=${gender}`);
+  };
 
   // Fallback products for when API is not available
   const fallbackProducts = [
@@ -146,24 +152,68 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* Shop by Gender */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Shop by Category
+              Shop by Gender
             </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Find the perfect shoes designed specifically for you
+            </p>
           </div>
           
-          <div className="flex justify-center">
-            <div className="group relative h-80 w-full max-w-2xl overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/90 to-accent/90" />
-              <img src={shoe1} alt="Shoes" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Male Shoes */}
+            <div 
+              className="group relative h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
+              onClick={() => handleGenderFilter('male')}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 to-blue-800/90" />
+              <img src={shoe1} alt="Men's Shoes" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
-                <h3 className="text-4xl font-bold mb-4">Shoes</h3>
-                <p className="text-white/90 mb-6 text-center">Step in style</p>
+                <div className="text-5xl mb-4">👨</div>
+                <h3 className="text-3xl font-bold mb-2">Men's</h3>
+                <p className="text-white/90 mb-6 text-center">Strong & Stylish</p>
                 <Button variant="secondary" size="lg" className="group-hover:scale-105 transition-transform">
-                  Shop Shoes
+                  Shop Men's
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Female Shoes */}
+            <div 
+              className="group relative h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
+              onClick={() => handleGenderFilter('female')}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/90 to-purple-600/90" />
+              <img src={shoe2} alt="Women's Shoes" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60" />
+              <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
+                <div className="text-5xl mb-4">👩</div>
+                <h3 className="text-3xl font-bold mb-2">Women's</h3>
+                <p className="text-white/90 mb-6 text-center">Elegant & Chic</p>
+                <Button variant="secondary" size="lg" className="group-hover:scale-105 transition-transform">
+                  Shop Women's
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Unisex Shoes */}
+            <div 
+              className="group relative h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
+              onClick={() => handleGenderFilter('unisex')}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/90 to-teal-600/90" />
+              <img src={shoe1} alt="Unisex Shoes" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60" />
+              <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
+                <div className="text-5xl mb-4">👫</div>
+                <h3 className="text-3xl font-bold mb-2">Unisex</h3>
+                <p className="text-white/90 mb-6 text-center">For Everyone</p>
+                <Button variant="secondary" size="lg" className="group-hover:scale-105 transition-transform">
+                  Shop Unisex
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>

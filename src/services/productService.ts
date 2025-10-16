@@ -10,6 +10,7 @@ export interface Product {
   brand: string;
   colors?: string[];
   sizes?: string[];
+  gender?: string;
   images?: Array<{
     id: number;
     image_url: string;

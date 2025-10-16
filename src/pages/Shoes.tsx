@@ -13,6 +13,7 @@ import shoe1 from "@/assets/shoe-1.jpg";
 import shoe2 from "@/assets/shoe-2.jpg";
 import { Filter, Grid, List, Info } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,10 +22,12 @@ import {
 import { productService, Product } from "@/services/productService";
 
 const Shoes = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sizeFormat, setSizeFormat] = useState<"US" | "UK">("US");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedGender, setSelectedGender] = useState<string>("all");
   const [shoes, setShoes] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +93,14 @@ const Shoes = () => {
     },
   ];
 
+  // Handle URL parameters for gender filtering
+  useEffect(() => {
+    const genderParam = searchParams.get('gender');
+    if (genderParam && ['male', 'female', 'unisex'].includes(genderParam)) {
+      setSelectedGender(genderParam);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const fetchShoesAndCategories = async () => {
       try {
@@ -121,9 +132,17 @@ const Shoes = () => {
           });
           
           // Filter products that belong to shoe categories
-          const shoeProducts = productsResponse.data.products.filter(product =>
+          let shoeProducts = productsResponse.data.products.filter(product =>
             shoeCategories.some(cat => cat.id === product.category_id)
           );
+
+          // Apply gender filter if specified
+          const genderFilter = searchParams.get('gender');
+          if (genderFilter && ['male', 'female', 'unisex'].includes(genderFilter)) {
+            shoeProducts = shoeProducts.filter(product => 
+              product.gender === genderFilter
+            );
+          }
           
           setShoes(shoeProducts.length > 0 ? shoeProducts : fallbackShoes as any);
         } else {
@@ -140,7 +159,7 @@ const Shoes = () => {
     };
 
     fetchShoesAndCategories();
-  }, []);
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -181,6 +200,33 @@ const Shoes = () => {
                     <SelectContent>
                       <SelectItem value="all">All Shoes</SelectItem>
                       <SelectItem value="lifestyle">Lifestyle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Gender */}
+                <div className="mb-6">
+                  <h4 className="font-medium text-foreground mb-3">Gender</h4>
+                  <Select 
+                    value={selectedGender}
+                    onValueChange={(value) => {
+                      setSelectedGender(value);
+                      if (value === "all") {
+                        searchParams.delete('gender');
+                      } else {
+                        searchParams.set('gender', value);
+                      }
+                      setSearchParams(searchParams);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Genders</SelectItem>
+                      <SelectItem value="male">Men's</SelectItem>
+                      <SelectItem value="female">Women's</SelectItem>
+                      <SelectItem value="unisex">Unisex</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
