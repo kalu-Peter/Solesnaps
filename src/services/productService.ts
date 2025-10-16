@@ -8,8 +8,8 @@ export interface Product {
   price: string;
   stock_quantity: number;
   brand: string;
-  colors?: string[];
-  sizes?: string[];
+  colors?: string[] | string;
+  sizes?: string[] | string;
   gender?: string;
   images?: Array<{
     id: number;
@@ -17,7 +17,7 @@ export interface Product {
     alt_text?: string;
     is_primary: boolean;
     sort_order: number;
-  }>;
+  }> | string;
   category_name?: string;
   category_id?: number;
   is_featured: boolean;

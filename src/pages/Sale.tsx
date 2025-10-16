@@ -56,31 +56,79 @@ const Sale = () => {
     {
       id: 401,
       name: "Sport Runner Pro",
-      price: "$89.99",
+      description: "High-performance running shoe",
+      price: "89.99",
       originalPrice: "$129.99",
       discount: "31%",
-      category: "Shoes",
-      image: shoe1,
+      stock_quantity: 15,
+      brand: "Nike",
+      colors: ["Black", "White"],
+      sizes: ["8", "9", "10", "11"],
+      images: [{ 
+        id: 1, 
+        image_url: shoe1, 
+        alt_text: "Sport Runner Pro", 
+        is_primary: true, 
+        sort_order: 0 
+      }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       stock: 15,
     },
     {
       id: 404,
       name: "Urban Classic",
-      price: "$59.99",
+      description: "Stylish casual shoe",
+      price: "59.99",
       originalPrice: "$89.99",
       discount: "33%",
-      category: "Shoes",
-      image: shoe2,
+      stock_quantity: 22,
+      brand: "Adidas",
+      colors: ["Brown", "Tan"],
+      sizes: ["7", "8", "9", "10"],
+      images: [{ 
+        id: 2, 
+        image_url: shoe2, 
+        alt_text: "Urban Classic", 
+        is_primary: true, 
+        sort_order: 0 
+      }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       stock: 22,
     },
     {
       id: 406,
       name: "Trail Runner",
-      price: "$109.99",
+      description: "Durable outdoor running shoe",
+      price: "109.99",
       originalPrice: "$159.99",
       discount: "31%",
-      category: "Shoes",
-      image: shoe1,
+      stock_quantity: 18,
+      brand: "Merrill",
+      colors: ["Green", "Gray"],
+      sizes: ["8", "9", "10", "11", "12"],
+      images: [{ 
+        id: 3, 
+        image_url: shoe1, 
+        alt_text: "Trail Runner", 
+        is_primary: true, 
+        sort_order: 0 
+      }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       stock: 18,
     },
   ];
@@ -248,7 +296,24 @@ const Sale = () => {
           >
             {saleProducts.map((product) => (
               <div key={product.id} className="relative">
-                <ProductCard {...product} />
+                <ProductCard 
+                  id={product.id}
+                  name={product.name}
+                  description={product.description}
+                  price={product.price}
+                  stock_quantity={product.stock_quantity}
+                  brand={product.brand}
+                  colors={product.colors}
+                  sizes={product.sizes}
+                  images={product.images}
+                  category_name={product.category_name}
+                  category_id={product.category_id}
+                  is_featured={product.is_featured}
+                  is_active={product.is_active}
+                  created_at={product.created_at}
+                  updated_at={product.updated_at}
+                  originalPrice={product.originalPrice}
+                />
 
                 {/* Discount Badge */}
                 <div className="absolute top-3 left-3 z-10">

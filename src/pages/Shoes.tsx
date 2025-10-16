@@ -38,58 +38,138 @@ const Shoes = () => {
     {
       id: 201,
       name: "Sport Runner Pro",
-      price: "$89.99",
-      category: "Shoes",
-      image: shoe1,
+      description: "High-performance running shoe",
+      price: "89.99",
+      stock_quantity: 25,
+      brand: "Nike",
+      colors: ["Black", "White"],
+      sizes: ["8", "9", "10", "11"],
+      images: [{ id: 1, image_url: shoe1, alt_text: "Sport Runner Pro", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 202,
       name: "Urban Classic",
-      price: "$79.99",
-      category: "Shoes",
-      image: shoe2,
+      description: "Stylish casual shoe",
+      price: "79.99",
+      stock_quantity: 30,
+      brand: "Adidas",
+      colors: ["Brown", "Tan"],
+      sizes: ["7", "8", "9", "10"],
+      images: [{ id: 2, image_url: shoe2, alt_text: "Urban Classic", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 203,
       name: "Air Max Elite",
-      price: "$129.99",
-      category: "Shoes",
-      image: shoe1,
+      description: "Premium athletic shoe",
+      price: "129.99",
+      stock_quantity: 20,
+      brand: "Nike",
+      colors: ["White", "Blue"],
+      sizes: ["8", "9", "10", "11", "12"],
+      images: [{ id: 3, image_url: shoe1, alt_text: "Air Max Elite", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 204,
       name: "Street Walker",
-      price: "$95.99",
-      category: "Shoes",
-      image: shoe2,
+      description: "Urban style sneaker",
+      price: "95.99",
+      stock_quantity: 15,
+      brand: "Puma",
+      colors: ["Black", "Gray"],
+      sizes: ["7", "8", "9", "10"],
+      images: [{ id: 4, image_url: shoe2, alt_text: "Street Walker", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 205,
       name: "Performance Runner",
-      price: "$159.99",
-      category: "Shoes",
-      image: shoe1,
+      description: "Professional running shoe",
+      price: "159.99",
+      stock_quantity: 12,
+      brand: "Asics",
+      colors: ["Blue", "Yellow"],
+      sizes: ["8", "9", "10", "11", "12"],
+      images: [{ id: 5, image_url: shoe1, alt_text: "Performance Runner", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 206,
       name: "Casual Comfort",
-      price: "$69.99",
-      category: "Shoes",
-      image: shoe2,
+      description: "Everyday comfort shoe",
+      price: "69.99",
+      stock_quantity: 35,
+      brand: "Sketchers",
+      colors: ["Brown", "Black"],
+      sizes: ["7", "8", "9", "10", "11"],
+      images: [{ id: 6, image_url: shoe2, alt_text: "Casual Comfort", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 207,
       name: "Trail Explorer",
-      price: "$189.99",
-      category: "Shoes",
-      image: shoe1,
+      description: "Outdoor hiking shoe",
+      price: "189.99",
+      stock_quantity: 8,
+      brand: "Merrill",
+      colors: ["Green", "Brown"],
+      sizes: ["8", "9", "10", "11", "12"],
+      images: [{ id: 7, image_url: shoe1, alt_text: "Trail Explorer", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 208,
       name: "City Sprint",
-      price: "$99.99",
-      category: "Shoes",
-      image: shoe2,
+      description: "Urban running shoe",
+      price: "99.99",
+      stock_quantity: 18,
+      brand: "New Balance",
+      colors: ["White", "Red"],
+      sizes: ["7", "8", "9", "10", "11"],
+      images: [{ id: 8, image_url: shoe2, alt_text: "City Sprint", is_primary: true, sort_order: 0 }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
   ];
 
@@ -425,7 +505,24 @@ const Shoes = () => {
                   }`}
                 >
                   {shoes.map((shoe) => (
-                    <ProductCard key={shoe.id} {...shoe} />
+                    <ProductCard 
+                      key={shoe.id}
+                      id={shoe.id}
+                      name={shoe.name}
+                      description={shoe.description}
+                      price={shoe.price}
+                      stock_quantity={shoe.stock_quantity}
+                      brand={shoe.brand}
+                      colors={typeof shoe.colors === 'string' ? shoe.colors.split(' ') : shoe.colors}
+                      sizes={typeof shoe.sizes === 'string' ? shoe.sizes.split(' ') : shoe.sizes}
+                      images={Array.isArray(shoe.images) ? shoe.images : []}
+                      category_name={shoe.category_name}
+                      category_id={shoe.category_id}
+                      is_featured={shoe.is_featured}
+                      is_active={shoe.is_active}
+                      created_at={shoe.created_at}
+                      updated_at={shoe.updated_at}
+                    />
                   ))}
                 </div>
               )}

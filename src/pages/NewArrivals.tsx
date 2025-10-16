@@ -17,8 +17,10 @@ import { productService, Product } from "@/services/productService";
 const NewArrivals = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [newProducts, setNewProducts] = useState<Product[]>([]);
+  const [sortedProducts, setSortedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<string>("newest");
 
   // Function to calculate arrival date display
   const getArrivalDate = (createdAt: string) => {
@@ -31,6 +33,23 @@ const NewArrivals = () => {
     if (diffDays <= 7) return `${diffDays} days ago`;
     if (diffDays <= 14) return `${Math.ceil(diffDays / 7)} week${diffDays > 7 ? 's' : ''} ago`;
     return "Recently added";
+  };
+
+  // Sort products based on selected criteria
+  const sortProducts = (products: Product[], sortCriteria: string): Product[] => {
+    const sorted = [...products];
+    switch (sortCriteria) {
+      case 'newest':
+        return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'price-low':
+        return sorted.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+      case 'price-high':
+        return sorted.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+      case 'category':
+        return sorted.sort((a, b) => (a.category_name || '').localeCompare(b.category_name || ''));
+      default:
+        return sorted;
+    }
   };
 
   // Fetch new arrivals from API
@@ -51,6 +70,11 @@ const NewArrivals = () => {
 
     fetchNewArrivals();
   }, []);
+
+  // Sort products when sortBy or newProducts change
+  useEffect(() => {
+    setSortedProducts(sortProducts(newProducts, sortBy));
+  }, [newProducts, sortBy]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,7 +155,7 @@ const NewArrivals = () => {
           <div className="flex items-center justify-between mb-8 p-4 bg-[hsl(var(--sidebar-background))] rounded-lg border border-border">
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
-                Showing {newProducts.length} new products
+                Showing {sortedProducts.length} new products
               </span>
               <Badge variant="outline" className="text-xs">
                 <Sparkles className="h-3 w-3 mr-1" />
@@ -140,7 +164,7 @@ const NewArrivals = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <Select defaultValue="newest">
+              <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
@@ -202,7 +226,7 @@ const NewArrivals = () => {
                 <p className="text-muted-foreground">{error}</p>
               </div>
             </div>
-          ) : newProducts.length === 0 ? (
+          ) : sortedProducts.length === 0 ? (
             <div className="flex justify-center items-center py-12">
               <div className="text-center">
                 <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
@@ -218,14 +242,24 @@ const NewArrivals = () => {
                   : "grid-cols-1"
               }`}
             >
-              {newProducts.map((product) => (
+              {sortedProducts.map((product) => (
                 <div key={product.id} className="relative">
                   <ProductCard 
                     id={product.id}
                     name={product.name}
-                    price={`$${parseFloat(product.price).toFixed(2)}`}
-                    category={product.category_name || "Shoes"}
-                    images={product.images}
+                    description={product.description}
+                    price={product.price}
+                    stock_quantity={product.stock_quantity}
+                    brand={product.brand}
+                    colors={typeof product.colors === 'string' ? product.colors.split(' ') : product.colors}
+                    sizes={typeof product.sizes === 'string' ? product.sizes.split(' ') : product.sizes}
+                    images={Array.isArray(product.images) ? product.images : []}
+                    category_name={product.category_name}
+                    category_id={product.category_id}
+                    is_featured={product.is_featured}
+                    is_active={product.is_active}
+                    created_at={product.created_at}
+                    updated_at={product.updated_at}
                   />
                   {/* New Badge Overlay */}
                   <div className="absolute top-3 left-3 z-10">

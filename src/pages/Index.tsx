@@ -24,8 +24,52 @@ const Index = () => {
 
   // Fallback products for when API is not available
   const fallbackProducts = [
-    { id: 1, name: "Sport Runner Pro", price: "$89.99", category: "Shoes", image: shoe1 },
-    { id: 2, name: "Urban Classic", price: "$79.99", category: "Shoes", image: shoe2 },
+    { 
+      id: 1, 
+      name: "Sport Runner Pro", 
+      description: "High-performance running shoe",
+      price: "89.99", 
+      stock_quantity: 25,
+      brand: "Nike",
+      colors: ["Black", "White"],
+      sizes: ["8", "9", "10", "11"],
+      images: [{ 
+        id: 1, 
+        image_url: shoe1, 
+        alt_text: "Sport Runner Pro", 
+        is_primary: true, 
+        sort_order: 0 
+      }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { 
+      id: 2, 
+      name: "Urban Classic", 
+      description: "Stylish casual shoe",
+      price: "79.99", 
+      stock_quantity: 30,
+      brand: "Adidas",
+      colors: ["Brown", "Tan"],
+      sizes: ["7", "8", "9", "10"],
+      images: [{ 
+        id: 2, 
+        image_url: shoe2, 
+        alt_text: "Urban Classic", 
+        is_primary: true, 
+        sort_order: 0 
+      }],
+      category_name: "Shoes",
+      category_id: 1,
+      is_featured: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
   ];
 
   useEffect(() => {
@@ -145,7 +189,24 @@ const Index = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {products.map((product) => (
-                <ProductCard key={product.id} {...product} />
+                <ProductCard 
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  description={product.description}
+                  price={product.price}
+                  stock_quantity={product.stock_quantity}
+                  brand={product.brand}
+                  colors={typeof product.colors === 'string' ? product.colors.split(' ') : product.colors}
+                  sizes={typeof product.sizes === 'string' ? product.sizes.split(' ') : product.sizes}
+                  images={Array.isArray(product.images) ? product.images : []}
+                  category_name={product.category_name}
+                  category_id={product.category_id}
+                  is_featured={product.is_featured}
+                  is_active={product.is_active}
+                  created_at={product.created_at}
+                  updated_at={product.updated_at}
+                />
               ))}
             </div>
           )}
