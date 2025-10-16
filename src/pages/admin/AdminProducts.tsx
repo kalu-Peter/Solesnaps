@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -51,111 +51,254 @@ import {
   Trash2,
   Eye,
   Filter,
+  Upload,
+  X,
 } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
+
+// Types
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  image_url?: string;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  description?: string;
+  price: number;
+  stock_quantity: number;
+  category_id: number;
+  category_name?: string;
+  brand: string;
+  colors?: string[];
+  sizes?: string[];
+  images?: string[];
+  sku?: string;
+  is_featured: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ProductFormData {
+  name: string;
+  description: string;
+  price: string;
+  stock_quantity: string;
+  category_id: string;
+  brand: string;
+  colors: string[];
+  sizes: string[];
+  images: string[];
+  is_featured: boolean;
+}
 
 const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock product data
-  const products = [
-    {
-      id: 1,
-      name: "Sport Runner Pro",
-      category: "Shoes",
-      price: 89.99,
-      stock: 45,
-      status: "active",
-      image: "/api/placeholder/80/80",
-      sku: "SRP-001",
-      created: "2025-10-01",
-    },
-    {
-      id: 2,
-      name: "Urban Classic",
-      category: "Shoes",
-      price: 79.99,
-      stock: 23,
-      status: "active",
-      image: "/api/placeholder/80/80",
-      sku: "UC-002",
-      created: "2025-10-02",
-    },
-    {
-      id: 101,
-      name: "Smart Watch Pro",
-      category: "Electronics",
-      price: 299.99,
-      stock: 12,
-      status: "active",
-      image: "/api/placeholder/80/80",
-      sku: "SWP-101",
-      created: "2025-10-03",
-    },
-    {
-      id: 102,
-      name: "Premium Headphones",
-      category: "Electronics",
-      price: 159.99,
-      stock: 0,
-      status: "out_of_stock",
-      image: "/api/placeholder/80/80",
-      sku: "PH-102",
-      created: "2025-10-04",
-    },
-    {
-      id: 201,
-      name: "Business Formal",
-      category: "Shoes",
-      price: 129.99,
-      stock: 18,
-      status: "active",
-      image: "/api/placeholder/80/80",
-      sku: "BF-201",
-      created: "2025-10-05",
-    },
-    {
-      id: 103,
-      name: "Wireless Speaker",
-      category: "Electronics",
-      price: 89.99,
-      stock: 34,
-      status: "active",
-      image: "/api/placeholder/80/80",
-      sku: "WS-103",
-      created: "2025-10-06",
-    },
-  ];
+  const { toast } = useToast();
 
-  const categories = ["all", "Shoes", "Electronics"];
-
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+  const [formData, setFormData] = useState<ProductFormData>({
+    name: "",
+    description: "",
+    price: "",
+    stock_quantity: "",
+    category_id: "",
+    brand: "",
+    colors: [],
+    sizes: [],
+    images: [],
+    is_featured: false,
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "out_of_stock":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-      case "draft":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+  // API Functions
+  const fetchCategories = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('http://localhost:5000/api/products/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      const data = await response.json();
+      setCategories(data.data.categories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch categories",
+        variant: "destructive",
+      });
     }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('access_token');
+      
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10'
+      });
+
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedCategory !== 'all') {
+        const category = categories.find(c => c.id.toString() === selectedCategory);
+        if (category) params.append('category', category.name);
+      }
+
+      const response = await fetch(`http://localhost:5000/api/products?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+
+      const data = await response.json();
+      setProducts(data.data.products);
+      setTotalPages(data.data.pagination.total_pages);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch products",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createProduct = async () => {
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('access_token');
+
+      const productData = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        price: parseFloat(formData.price),
+        stock_quantity: parseInt(formData.stock_quantity),
+        category_id: parseInt(formData.category_id),
+        brand: formData.brand.trim(),
+        colors: formData.colors,
+        sizes: formData.sizes,
+        images: formData.images,
+        is_featured: formData.is_featured,
+      };
+
+      const response = await fetch('http://localhost:5000/api/products', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create product');
+      }
+
+      toast({
+        title: "Success",
+        description: "Product created successfully",
+      });
+
+      setIsAddDialogOpen(false);
+      resetForm();
+      fetchProducts();
+    } catch (error: any) {
+      console.error('Error creating product:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create product",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      stock_quantity: "",
+      category_id: "",
+      brand: "",
+      colors: [],
+      sizes: [],
+      images: [],
+      is_featured: false,
+    });
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      fetchProducts();
+    }
+  }, [currentPage, searchTerm, selectedCategory, categories]);
+
+  // The filtering is now handled server-side, so we just use products directly
+  const filteredProducts = products;
+
+  const getStatusColor = (isActive: boolean, stockQuantity: number) => {
+    if (!isActive) {
+      return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+    }
+    if (stockQuantity === 0) {
+      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+    }
+    return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+  };
+
+  const getStatusText = (isActive: boolean, stockQuantity: number) => {
+    if (!isActive) return "Inactive";
+    if (stockQuantity === 0) return "Out of Stock";
+    return "Active";
   };
 
   const getStockStatus = (stock: number) => {
     if (stock === 0) return { text: "Out of Stock", color: "text-red-600" };
     if (stock < 10) return { text: "Low Stock", color: "text-yellow-600" };
     return { text: "In Stock", color: "text-green-600" };
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createProduct();
   };
 
   return (
@@ -182,62 +325,159 @@ const AdminProducts = () => {
                 Create a new product in your catalog
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Product Name</Label>
-                <Input id="name" placeholder="Enter product name" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid gap-2">
-                  <Label htmlFor="price">Price</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="0.00"
-                    step="0.01"
+                  <Label htmlFor="name">Product Name *</Label>
+                  <Input 
+                    id="name" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="Enter product name" 
+                    required 
                   />
                 </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="price">Price *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="stock">Stock Quantity *</Label>
+                    <Input 
+                      id="stock" 
+                      type="number" 
+                      value={formData.stock_quantity}
+                      onChange={(e) => setFormData({...formData, stock_quantity: e.target.value})}
+                      placeholder="0" 
+                      min="0"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category *</Label>
+                    <Select 
+                      value={formData.category_id} 
+                      onValueChange={(value) => setFormData({...formData, category_id: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id.toString()}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="brand">Brand *</Label>
+                    <Input 
+                      id="brand" 
+                      value={formData.brand}
+                      onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                      placeholder="Product brand" 
+                      required
+                    />
+                  </div>
+                </div>
+                
                 <div className="grid gap-2">
-                  <Label htmlFor="stock">Stock</Label>
-                  <Input id="stock" type="number" placeholder="0" />
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    placeholder="Enter product description"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="colors">Colors (comma separated)</Label>
+                    <Input
+                      id="colors"
+                      value={formData.colors.join(', ')}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)
+                      })}
+                      placeholder="Red, Blue, Black"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="sizes">Sizes (comma separated)</Label>
+                    <Input
+                      id="sizes"
+                      value={formData.sizes.join(', ')}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        sizes: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                      })}
+                      placeholder="S, M, L, XL"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="images">Image URLs (comma separated)</Label>
+                  <Textarea
+                    id="images"
+                    value={formData.images.join(', ')}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      images: e.target.value.split(',').map(img => img.trim()).filter(img => img)
+                    })}
+                    placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
+                    rows={2}
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="is_featured"
+                    checked={formData.is_featured}
+                    onChange={(e) => setFormData({...formData, is_featured: e.target.checked})}
+                    className="rounded"
+                  />
+                  <Label htmlFor="is_featured">Featured Product</Label>
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="category">Category</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="shoes">Shoes</SelectItem>
-                    <SelectItem value="electronics">Electronics</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="sku">SKU</Label>
-                <Input id="sku" placeholder="Product SKU" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Enter product description"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={() => setIsAddDialogOpen(false)}>
-                Create Product
-              </Button>
-            </DialogFooter>
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddDialogOpen(false);
+                    resetForm();
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Creating..." : "Create Product"}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -272,16 +512,16 @@ const AdminProducts = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.slice(1).map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="text-sm text-muted-foreground">
-              {filteredProducts.length} of {products.length} products
+              {products.length} products {totalPages > 1 && `(Page ${currentPage} of ${totalPages})`}
             </div>
           </div>
         </CardContent>
@@ -303,83 +543,91 @@ const AdminProducts = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => {
-                const stockStatus = getStockStatus(product.stock);
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    Loading products...
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredProducts.map((product) => {
+                  const stockStatus = getStockStatus(product.stock_quantity);
 
-                return (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="h-10 w-10 rounded object-cover"
-                        />
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            SKU: {product.sku}
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={product.images?.[0] || "/api/placeholder/80/80"}
+                            alt={product.name}
+                            className="h-10 w-10 rounded object-cover"
+                          />
+                          <div>
+                            <div className="font-medium">{product.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {product.brand}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{product.category}</Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ${product.price.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{product.stock}</div>
-                        <div className={`text-sm ${stockStatus.color}`}>
-                          {stockStatus.text}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{product.category_name || "N/A"}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        ${product.price.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{product.stock_quantity}</div>
+                          <div className={`text-sm ${stockStatus.color}`}>
+                            {stockStatus.text}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={getStatusColor(product.status)}
-                      >
-                        {product.status.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(product.created).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Product
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Product
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={getStatusColor(product.is_active, product.stock_quantity)}
+                        >
+                          {getStatusText(product.is_active, product.stock_quantity)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(product.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Product
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Product
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
 
-          {filteredProducts.length === 0 && (
+          {!loading && filteredProducts.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
                 <h3 className="text-lg font-medium">No products found</h3>
@@ -397,6 +645,33 @@ const AdminProducts = () => {
                     Add Your First Product
                   </Button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-4 px-6 pb-4">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
               </div>
             </div>
           )}
