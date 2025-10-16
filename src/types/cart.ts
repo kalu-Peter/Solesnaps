@@ -13,11 +13,11 @@ export interface CartItem {
 
 export interface DeliveryLocation {
   id: number;
-  city: string;
+  city_name: string;
   shopping_amount: number;
-  pick_up_location: string;
-  pick_up_phone: string;
-  status: string;
+  pickup_location: string;
+  pickup_phone: string;
+  pickup_status: string;
 }
 
 export interface CartContextType {

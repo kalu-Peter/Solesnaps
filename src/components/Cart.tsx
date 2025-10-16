@@ -112,15 +112,15 @@ export default function Cart() {
                     <option value="">Select a location...</option>
                     {deliveryLocations.map(loc => (
                       <option key={loc.id} value={loc.id}>
-                        {loc.city} ({loc.status === "active" ? "Active" : "Inactive"})
+                        {loc.city_name} ({loc.pickup_status === "active" ? "Active" : "Inactive"})
                       </option>
                     ))}
                   </select>
                 )}
                 {selectedDeliveryLocation && (
                   <div className="mt-1 text-xs text-muted-foreground">
-                    <div>Pickup: {selectedDeliveryLocation.pick_up_location}</div>
-                    <div>Phone: {selectedDeliveryLocation.pick_up_phone}</div>
+                    <div>Pickup: {selectedDeliveryLocation.pickup_location}</div>
+                    <div>Phone: {selectedDeliveryLocation.pickup_phone}</div>
                   </div>
                 )}
               </div>
@@ -151,11 +151,11 @@ export default function Cart() {
                   <span className="text-muted-foreground">Shipping</span>
                   <span className="text-foreground">
                     {selectedDeliveryLocation
-                      ? `Ksh ${shippingCost.toFixed(2)}`
+                      ? `Ksh ${Number(shippingCost || 0).toFixed(2)}`
                       : "--"}
                   </span>
                 </div>
-                {selectedDeliveryLocation && selectedDeliveryLocation.status !== "active" && (
+                {selectedDeliveryLocation && selectedDeliveryLocation.pickup_status !== "active" && (
                   <div className="text-xs text-destructive">This location is not active for delivery.</div>
                 )}
               </div>
@@ -169,13 +169,13 @@ export default function Cart() {
                 </span>
                 <span className="text-lg font-bold text-primary">
                   {selectedDeliveryLocation
-                    ? `Ksh ${(totalPrice + shippingCost).toFixed(2)}`
+                    ? `Ksh ${(totalPrice + Number(shippingCost || 0)).toFixed(2)}`
                     : "--"}
                 </span>
               </div>
 
               {/* Checkout Button */}
-              <Button className="w-full" size="lg" disabled={!selectedDeliveryLocation || selectedDeliveryLocation.status !== "active"}>
+              <Button className="w-full" size="lg" disabled={!selectedDeliveryLocation || selectedDeliveryLocation.pickup_status !== "active"}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 Checkout
               </Button>

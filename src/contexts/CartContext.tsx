@@ -24,7 +24,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       return {
         ...state,
         selectedDeliveryLocation: action.payload,
-        shippingCost: action.payload.shopping_amount,
+        shippingCost: Number(action.payload.shopping_amount),
       };
     case "ADD_ITEM": {
       const existingItem = state.items.find(
@@ -76,6 +76,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       return {
         ...state,
         items: [],
+        selectedDeliveryLocation: undefined,
+        shippingCost: 0,
       };
 
     case "OPEN_CART":
