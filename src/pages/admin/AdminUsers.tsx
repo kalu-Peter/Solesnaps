@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, Plus, Search, UserCheck, UserX } from 'lucide-react';
+import { Edit, Trash2, Plus, Search, UserCheck, UserX, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -49,23 +50,55 @@ const AdminUsers: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [authError, setAuthError] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
     first_name: '',
     last_name: '',
     email: '',
     password: '',
-    role: 'customer',
+    role: 'admin',
     phone: '',
     date_of_birth: '',
     gender: ''
   });
 
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const checkAuthAndFetch = async () => {
+    // Check both possible token keys for compatibility
+    const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+    
+    if (!token) {
+      setAuthError(true);
+      setLoading(false);
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to access the admin panel.",
+        variant: "destructive",
+      });
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return;
+    }
+    
+    // If we have a token, proceed with fetching
+    await fetchUsers();
+  };
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
+      setAuthError(false);
+      
+      // Check both possible token keys for compatibility
+      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+      
+      if (!token) {
+        throw new Error('No access token found');
+      }
       
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -74,7 +107,7 @@ const AdminUsers: React.FC = () => {
 
       if (searchTerm) params.append('search', searchTerm);
       if (roleFilter !== 'all') params.append('role', roleFilter);
-      if (statusFilter !== 'all') params.append('is_active', statusFilter);
+      if (statusFilter !== 'all') params.append('is_verified', statusFilter);
 
       const response = await fetch(`http://localhost:5000/api/users?${params}`, {
         headers: {
@@ -83,60 +116,154 @@ const AdminUsers: React.FC = () => {
         },
       });
 
+      if (response.status === 401) {
+        // Token is invalid or expired
+        localStorage.removeItem('access_token');
+        setAuthError(true);
+        toast({
+          title: "Session Expired",
+          description: "Please log in again to continue.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch users');
       }
 
       const data = await response.json();
-      setUsers(data.data.users);
-      setTotalPages(data.data.pagination.total_pages);
-    } catch (error) {
+      setUsers(data.data?.users || []);
+      setTotalPages(data.data?.pagination?.total_pages || 1);
+    } catch (error: any) {
       console.error('Error fetching users:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch users. Please try again.",
-        variant: "destructive",
-      });
+      if (!authError) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch users. Please try again.",
+          variant: "destructive",
+        });
+      }
+      // Set empty array on error to prevent crashes
+      setUsers([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial load effect
   useEffect(() => {
-    fetchUsers();
-  }, [currentPage, searchTerm, roleFilter, statusFilter]);
+    checkAuthAndFetch();
+  }, []);
+
+  // Effect for pagination and filters - only if authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+    if (!token) {
+      setAuthError(true);
+      setLoading(false);
+      return;
+    }
+    
+    if (!authError) {
+      fetchUsers();
+    }
+  }, [currentPage, roleFilter, statusFilter]);
+
+  // Separate useEffect for search with debouncing
+  useEffect(() => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+    if (!token || authError) {
+      return; // Don't search if there's no token or auth error
+    }
+    
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchUsers();
+      } else {
+        setCurrentPage(1); // Reset to first page when searching
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (authError) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create users.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+      
+      if (!token) {
+        setAuthError(true);
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to continue.",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
+      }
+
+      // Ensure the role is always admin for this admin panel
+      const adminUserData = {
+        ...formData,
+        role: 'admin'
+      };
+
       const response = await fetch('http://localhost:5000/api/users', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(adminUserData),
       });
+
+      if (response.status === 401) {
+        localStorage.removeItem('access_token');
+        setAuthError(true);
+        toast({
+          title: "Session Expired",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create user');
+        throw new Error(errorData.message || 'Failed to create admin user');
       }
 
       toast({
         title: "Success",
-        description: "User created successfully",
+        description: "Admin user created successfully",
       });
 
       setIsCreateDialogOpen(false);
       resetForm();
-      fetchUsers();
+      checkAuthAndFetch();
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('Error creating admin user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: error.message || "Failed to create admin user",
         variant: "destructive",
       });
     }
@@ -147,7 +274,7 @@ const AdminUsers: React.FC = () => {
     if (!selectedUser) return;
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
       const updateData = { ...formData };
       if (!updateData.password) {
         delete updateData.password; // Don't send empty password
@@ -175,7 +302,7 @@ const AdminUsers: React.FC = () => {
       setIsEditDialogOpen(false);
       setSelectedUser(null);
       resetForm();
-      fetchUsers();
+      checkAuthAndFetch();
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast({
@@ -188,7 +315,7 @@ const AdminUsers: React.FC = () => {
 
   const handleToggleUserStatus = async (user: User) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:5000/api/users/${user.id}/status`, {
         method: 'PATCH',
         headers: {
@@ -208,7 +335,7 @@ const AdminUsers: React.FC = () => {
         description: `User ${!user.is_verified ? 'activated' : 'deactivated'} successfully`,
       });
 
-      fetchUsers();
+      checkAuthAndFetch();
     } catch (error: any) {
       console.error('Error toggling user status:', error);
       toast({
@@ -223,7 +350,7 @@ const AdminUsers: React.FC = () => {
     if (!userToDelete) return;
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:5000/api/users/${userToDelete.id}`, {
         method: 'DELETE',
         headers: {
@@ -243,7 +370,7 @@ const AdminUsers: React.FC = () => {
 
       setIsDeleteDialogOpen(false);
       setUserToDelete(null);
-      fetchUsers();
+      checkAuthAndFetch();
     } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
@@ -260,7 +387,7 @@ const AdminUsers: React.FC = () => {
       last_name: '',
       email: '',
       password: '',
-      role: 'customer',
+      role: 'admin',
       phone: '',
       date_of_birth: '',
       gender: ''
@@ -291,9 +418,12 @@ const AdminUsers: React.FC = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">User Management</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button 
+          onClick={() => setIsCreateDialogOpen(true)}
+          disabled={authError}
+        >
           <Plus className="w-4 h-4 mr-2" />
-          Add User
+          Add Admin User
         </Button>
       </div>
 
@@ -356,7 +486,18 @@ const AdminUsers: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {authError ? (
+            <div className="text-center py-12">
+              <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Authentication Required</h3>
+              <p className="text-muted-foreground mb-4">
+                You need to be logged in to access user management.
+              </p>
+              <Button onClick={() => navigate('/login')}>
+                Go to Login
+              </Button>
+            </div>
+          ) : loading ? (
             <div className="text-center py-4">Loading users...</div>
           ) : (
             <div className="overflow-x-auto">
@@ -466,9 +607,9 @@ const AdminUsers: React.FC = () => {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
+            <DialogTitle>Create New Admin User</DialogTitle>
             <DialogDescription>
-              Add a new user to the system.
+              Add a new administrator to the system.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateUser} className="space-y-4">
@@ -514,12 +655,11 @@ const AdminUsers: React.FC = () => {
             </div>
             <div>
               <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} disabled>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -559,7 +699,7 @@ const AdminUsers: React.FC = () => {
               <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create User</Button>
+              <Button type="submit">Create Admin User</Button>
             </DialogFooter>
           </form>
         </DialogContent>
