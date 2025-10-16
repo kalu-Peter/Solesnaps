@@ -206,6 +206,45 @@ const AdminUsers: React.FC = () => {
       return;
     }
 
+    // Client-side validation
+    if (formData.first_name.trim().length < 2) {
+      toast({
+        title: "Validation Error",
+        description: "First name must be at least 2 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.last_name.trim().length < 2) {
+      toast({
+        title: "Validation Error", 
+        description: "Last name must be at least 2 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      toast({
+        title: "Validation Error",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check password complexity
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(formData.password)) {
+      toast({
+        title: "Validation Error",
+        description: "Password must contain at least one uppercase letter, one lowercase letter, and one number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
       
@@ -220,10 +259,16 @@ const AdminUsers: React.FC = () => {
         return;
       }
 
-      // Ensure the role is always admin for this admin panel
+      // Clean up the data before sending
       const adminUserData = {
-        ...formData,
-        role: 'admin'
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: 'admin',
+        phone: formData.phone.trim() || null,
+        date_of_birth: formData.date_of_birth || null,
+        gender: formData.gender || null
       };
 
       const response = await fetch('http://localhost:5000/api/users', {
@@ -683,8 +728,12 @@ const AdminUsers: React.FC = () => {
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="At least 8 characters with upper, lower & number"
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Must contain at least one uppercase letter, one lowercase letter, and one number
+              </p>
             </div>
             <div>
               <Label htmlFor="role">Role</Label>
@@ -716,12 +765,12 @@ const AdminUsers: React.FC = () => {
             </div>
             <div>
               <Label htmlFor="gender">Gender (Optional)</Label>
-              <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+              <Select value={formData.gender || 'not_specified'} onValueChange={(value) => setFormData({ ...formData, gender: value === 'not_specified' ? '' : value })}>
                 <SelectTrigger className="text-black">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" className="text-black">Not specified</SelectItem>
+                  <SelectItem value="not_specified" className="text-black">Not specified</SelectItem>
                   <SelectItem value="male" className="text-black">Male</SelectItem>
                   <SelectItem value="female" className="text-black">Female</SelectItem>
                   <SelectItem value="other" className="text-black">Other</SelectItem>
@@ -819,12 +868,12 @@ const AdminUsers: React.FC = () => {
             </div>
             <div>
               <Label htmlFor="edit_gender">Gender</Label>
-              <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+              <Select value={formData.gender || 'not_specified'} onValueChange={(value) => setFormData({ ...formData, gender: value === 'not_specified' ? '' : value })}>
                 <SelectTrigger className="text-black">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" className="text-black">Not specified</SelectItem>
+                  <SelectItem value="not_specified" className="text-black">Not specified</SelectItem>
                   <SelectItem value="male" className="text-black">Male</SelectItem>
                   <SelectItem value="female" className="text-black">Female</SelectItem>
                   <SelectItem value="other" className="text-black">Other</SelectItem>
