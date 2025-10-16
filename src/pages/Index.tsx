@@ -167,13 +167,10 @@ const Index = () => {
       {/* Featured Products */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               Featured Products
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Explore our curated selection of premium products
-            </p>
           </div>
           
           {loading ? (
@@ -216,13 +213,10 @@ const Index = () => {
       {/* Shop by Gender */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               Shop by Gender
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Find the perfect shoes designed specifically for you
-            </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
