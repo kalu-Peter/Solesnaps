@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Header() {
   const { totalItems, openCart } = useCart();
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout, getFullName } = useAuth();
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -41,13 +41,10 @@ export default function Header() {
     navigate("/");
   };
 
-  const getUserInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const getUserInitials = (firstName: string, lastName: string) => {
+    const firstInitial = firstName?.charAt(0)?.toUpperCase() || "";
+    const lastInitial = lastName?.charAt(0)?.toUpperCase() || "";
+    return firstInitial + lastInitial || "U";
   };
 
   return (
@@ -111,9 +108,9 @@ export default function Header() {
                     className="relative h-8 w-8 rounded-full"
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.avatar_url} alt={user?.name} />
+                      <AvatarImage src={user?.avatar_url} alt={getFullName()} />
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        {user?.name ? getUserInitials(user.name) : "U"}
+                        {user ? getUserInitials(user.first_name, user.last_name) : "U"}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -122,7 +119,7 @@ export default function Header() {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {user?.name}
+                        {getFullName()}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {user?.email}

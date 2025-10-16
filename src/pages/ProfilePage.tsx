@@ -36,7 +36,8 @@ const ProfilePage: React.FC = () => {
 
   // Profile form state
   const [profileData, setProfileData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     dateOfBirth: "",
@@ -76,7 +77,8 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (user) {
       setProfileData({
-        name: user.name || "",
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
         email: user.email || "",
         phone: user.phone || "",
         dateOfBirth: user.date_of_birth || "",
@@ -86,15 +88,10 @@ const ProfilePage: React.FC = () => {
   }, [user]);
 
   // Get user initials for avatar
-  const getUserInitials = (name: string) => {
-    return (
-      name
-        ?.split(" ")
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2) || "U"
-    );
+  const getUserInitials = (firstName: string, lastName: string) => {
+    const firstInitial = firstName?.charAt(0)?.toUpperCase() || "";
+    const lastInitial = lastName?.charAt(0)?.toUpperCase() || "";
+    return firstInitial + lastInitial || "U";
   };
 
   // Handle profile form input changes
@@ -119,10 +116,16 @@ const ProfilePage: React.FC = () => {
   const validateProfileForm = () => {
     const errors: Record<string, string> = {};
 
-    if (!profileData.name.trim()) {
-      errors.name = "Name is required";
-    } else if (profileData.name.trim().length < 2) {
-      errors.name = "Name must be at least 2 characters";
+    if (!profileData.firstName.trim()) {
+      errors.firstName = "First name is required";
+    } else if (profileData.firstName.trim().length < 1) {
+      errors.firstName = "First name must be at least 1 character";
+    }
+
+    if (!profileData.lastName.trim()) {
+      errors.lastName = "Last name is required";
+    } else if (profileData.lastName.trim().length < 1) {
+      errors.lastName = "Last name must be at least 1 character";
     }
 
     if (!profileData.email.trim()) {
@@ -194,7 +197,8 @@ const ProfilePage: React.FC = () => {
 
     try {
       const result = await updateProfile({
-        name: profileData.name,
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
         phone: profileData.phone,
         date_of_birth: profileData.dateOfBirth,
         gender: profileData.gender,
@@ -282,14 +286,14 @@ const ProfilePage: React.FC = () => {
 
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={user.avatar_url} alt={user.name} />
+              <AvatarImage src={user.avatar_url} alt={`${user.first_name} ${user.last_name}`} />
               <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                {getUserInitials(user.name)}
+                {getUserInitials(user.first_name, user.last_name)}
               </AvatarFallback>
             </Avatar>
 
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-900">{user.first_name} {user.last_name}</h1>
               <p className="text-gray-600">{user.email}</p>
               <Badge
                 variant={user.role === "admin" ? "default" : "secondary"}
@@ -357,33 +361,58 @@ const ProfilePage: React.FC = () => {
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Name */}
+                    {/* First Name */}
                     <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
+                      <Label htmlFor="firstName">First Name</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-4 w-4 " />
                         <Input
-                          id="name"
-                          value={profileData.name}
+                          id="firstName"
+                          value={profileData.firstName}
                           onChange={(e) =>
-                            handleProfileInputChange("name", e.target.value)
+                            handleProfileInputChange("firstName", e.target.value)
                           }
                           className={`pl-10 text-black ${
-                            profileErrors.name ? "border-destructive" : ""
+                            profileErrors.firstName ? "border-destructive" : ""
                           }`}
                           disabled={!isEditingProfile}
-                          placeholder="Enter your full name"
+                          placeholder="Enter your first name"
                         />
                       </div>
-                      {profileErrors.name && (
+                      {profileErrors.firstName && (
                         <p className="text-xs text-destructive">
-                          {profileErrors.name}
+                          {profileErrors.firstName}
                         </p>
                       )}
                     </div>
 
-                    {/* Email */}
+                    {/* Last Name */}
                     <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 h-4 w-4 " />
+                        <Input
+                          id="lastName"
+                          value={profileData.lastName}
+                          onChange={(e) =>
+                            handleProfileInputChange("lastName", e.target.value)
+                          }
+                          className={`pl-10 text-black ${
+                            profileErrors.lastName ? "border-destructive" : ""
+                          }`}
+                          disabled={!isEditingProfile}
+                          placeholder="Enter your last name"
+                        />
+                      </div>
+                      {profileErrors.lastName && (
+                        <p className="text-xs text-destructive">
+                          {profileErrors.lastName}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Email - Full Width */}
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="email">Email Address</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />

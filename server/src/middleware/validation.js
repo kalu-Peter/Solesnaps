@@ -20,10 +20,15 @@ const handleValidationErrors = (req, res, next) => {
 
 // Auth validation rules
 const validateRegister = [
-  body('name')
+  body('first_name')
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .withMessage('First name must be between 2 and 100 characters'),
+    
+  body('last_name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Last name must be between 2 and 100 characters'),
     
   body('email')
     .isEmail()
@@ -53,11 +58,17 @@ const validateLogin = [
 ];
 
 const validateUpdateProfile = [
-  body('name')
+  body('first_name')
     .optional()
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .withMessage('First name must be between 2 and 100 characters'),
+    
+  body('last_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Last name must be between 2 and 100 characters'),
     
   body('phone')
     .optional()
@@ -397,10 +408,15 @@ const validateUpdateCartItem = [
 
 // User management validation rules (Admin)
 const validateCreateUser = [
-  body('name')
+  body('first_name')
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .withMessage('First name must be between 2 and 100 characters'),
+    
+  body('last_name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Last name must be between 2 and 100 characters'),
     
   body('email')
     .isEmail()
@@ -415,8 +431,8 @@ const validateCreateUser = [
     
   body('role')
     .optional()
-    .isIn(['user', 'admin'])
-    .withMessage('Role must be either user or admin'),
+    .isIn(['customer', 'admin'])
+    .withMessage('Role must be either customer or admin'),
     
   body('phone')
     .optional()
@@ -437,11 +453,17 @@ const validateCreateUser = [
 ];
 
 const validateUpdateUser = [
-  body('name')
+  body('first_name')
     .optional()
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .withMessage('First name must be between 2 and 100 characters'),
+    
+  body('last_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Last name must be between 2 and 100 characters'),
     
   body('email')
     .optional()
@@ -451,8 +473,8 @@ const validateUpdateUser = [
     
   body('role')
     .optional()
-    .isIn(['user', 'admin'])
-    .withMessage('Role must be either user or admin'),
+    .isIn(['customer', 'admin'])
+    .withMessage('Role must be either customer or admin'),
     
   body('phone')
     .optional()
@@ -469,18 +491,18 @@ const validateUpdateUser = [
     .isIn(['male', 'female', 'other'])
     .withMessage('Gender must be male, female, or other'),
     
-  body('is_active')
+  body('is_verified')
     .optional()
     .isBoolean()
-    .withMessage('is_active must be true or false'),
+    .withMessage('is_verified must be true or false'),
     
   handleValidationErrors
 ];
 
 const validateToggleUserStatus = [
-  body('is_active')
+  body('is_verified')
     .isBoolean()
-    .withMessage('is_active must be true or false'),
+    .withMessage('is_verified must be true or false'),
     
   handleValidationErrors
 ];
@@ -498,13 +520,13 @@ const validateGetUsers = [
     
   query('role')
     .optional()
-    .isIn(['user', 'admin'])
-    .withMessage('Role must be either user or admin'),
+    .isIn(['customer', 'admin'])
+    .withMessage('Role must be either customer or admin'),
     
   query('is_active')
     .optional()
     .isIn(['true', 'false'])
-    .withMessage('is_active must be true or false'),
+    .withMessage('is_verified must be true or false'),
     
   handleValidationErrors
 ];

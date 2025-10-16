@@ -2,14 +2,21 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface User {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  role: "user" | "admin";
+  role: "customer" | "admin";
   phone?: string;
   avatar_url?: string;
   date_of_birth?: string;
   gender?: string;
 }
+
+// Helper function to get full name
+const getFullName = (user: User | null): string => {
+  if (!user) return '';
+  return `${user.first_name} ${user.last_name}`.trim();
+};
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +24,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
+  getFullName: () => string;
   login: (
     email: string,
     password: string
@@ -35,13 +43,15 @@ interface AuthContextType {
 }
 
 interface RegisterData {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   password: string;
 }
 
 interface UpdateProfileData {
-  name: string;
+  first_name: string;
+  last_name: string;
   phone?: string;
   date_of_birth?: string;
   gender?: string;
@@ -334,6 +344,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     isAdmin,
     isLoading,
+    getFullName: () => getFullName(user),
     login,
     register,
     updateProfile,

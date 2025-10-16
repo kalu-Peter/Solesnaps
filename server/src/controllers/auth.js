@@ -5,7 +5,7 @@ const { generateAccessToken, generateRefreshToken } = require('../middleware/aut
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { first_name, last_name, email, password } = req.body;
 
     // Check if user already exists
     const existingUser = await query(
@@ -26,10 +26,10 @@ const register = async (req, res) => {
 
     // Create user
     const result = await query(
-      `INSERT INTO users (name, email, password, role) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING id, name, email, role, created_at`,
-      [name, email, hashedPassword, 'user']
+      `INSERT INTO users (first_name, last_name, email, password, role) 
+       VALUES ($1, $2, $3, $4, $5) 
+       RETURNING id, first_name, last_name, email, role, created_at`,
+      [first_name, last_name, email, hashedPassword, 'customer']
     );
 
     const user = result.rows[0];
@@ -42,7 +42,8 @@ const register = async (req, res) => {
       message: 'User registered successfully',
       user: {
         id: user.id,
-        name: user.name,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         role: user.role,
         created_at: user.created_at
@@ -68,7 +69,7 @@ const login = async (req, res) => {
 
     // Get user from database
     const result = await query(
-      'SELECT id, name, email, password, role, is_active FROM users WHERE email = $1',
+      'SELECT id, first_name, last_name, email, password, role, is_verified FROM users WHERE email = $1',
       [email]
     );
 
@@ -81,11 +82,11 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check if account is active
-    if (!user.is_active) {
+    // Check if account is verified (using is_verified instead of is_active)
+    if (!user.is_verified) {
       return res.status(401).json({
-        error: 'Account disabled',
-        message: 'Your account has been disabled. Please contact support.'
+        error: 'Account not verified',
+        message: 'Please verify your account before logging in.'
       });
     }
 
@@ -113,7 +114,8 @@ const login = async (req, res) => {
       message: 'Login successful',
       user: {
         id: user.id,
-        name: user.name,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         role: user.role
       },
@@ -137,8 +139,8 @@ const getProfile = async (req, res) => {
     const userId = req.user.id;
 
     const result = await query(
-      `SELECT id, name, email, role, phone, avatar_url, date_of_birth, 
-              gender, is_active, created_at, updated_at 
+      `SELECT id, first_name, last_name, email, role, phone, 
+              date_of_birth, gender, is_verified, created_at, updated_at 
        FROM users WHERE id = $1`,
       [userId]
     );
@@ -169,14 +171,14 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, phone, date_of_birth, gender } = req.body;
+    const { first_name, last_name, phone, date_of_birth, gender } = req.body;
 
     const result = await query(
       `UPDATE users 
-       SET name = $1, phone = $2, date_of_birth = $3, gender = $4, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $5 
-       RETURNING id, name, email, role, phone, date_of_birth, gender, updated_at`,
-      [name, phone, date_of_birth, gender, userId]
+       SET first_name = $1, last_name = $2, phone = $3, date_of_birth = $4, gender = $5, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6 
+       RETURNING id, first_name, last_name, email, role, phone, date_of_birth, gender, updated_at`,
+      [first_name, last_name, phone, date_of_birth, gender, userId]
     );
 
     if (result.rows.length === 0) {
@@ -279,14 +281,14 @@ const refreshToken = async (req, res) => {
 
     // Get user
     const result = await query(
-      'SELECT id, name, email, role, is_active FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
       [decoded.userId]
     );
 
-    if (result.rows.length === 0 || !result.rows[0].is_active) {
+    if (result.rows.length === 0 || !result.rows[0].is_verified) {
       return res.status(401).json({
         error: 'Invalid token',
-        message: 'User not found or inactive'
+        message: 'User not found or not verified'
       });
     }
 

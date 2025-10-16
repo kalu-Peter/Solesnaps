@@ -79,10 +79,9 @@ export default function SignUpForm({
     setIsLoading(true);
 
     try {
-      const fullName =
-        `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
       const result = await register({
-        name: fullName,
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
         email: formData.email,
         password: formData.password,
       });

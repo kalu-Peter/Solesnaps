@@ -146,7 +146,7 @@ app.use((error, req, res, next) => {
 });
 
 // Graceful shutdown
-const gracefulShutdown = (signal) => {
+const gracefulShutdown = (server) => (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
   
   server.close(() => {
@@ -177,16 +177,17 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`
 🚀 TechStyle API Server Started
-📍 Environment: ${process.env.NODE_ENV}
+📍 Environment: ${process.env.NODE_ENV || 'development'}
 🌐 Server: http://localhost:${PORT}
 🔗 API Base: http://localhost:${PORT}/api
-💾 Database: PostgreSQL on port ${process.env.DB_PORT}
+💾 Database: PostgreSQL on port ${process.env.DB_PORT || '5054'}
       `);
     });
 
     // Handle graceful shutdown
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    const shutdown = gracefulShutdown(server);
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
     return server;
   } catch (error) {

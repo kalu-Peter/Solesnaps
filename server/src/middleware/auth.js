@@ -18,7 +18,7 @@ const authenticateToken = async (req, res, next) => {
     
     // Get user from database to ensure they still exist
     const result = await query(
-      'SELECT id, name, email, role, is_active FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -31,16 +31,17 @@ const authenticateToken = async (req, res, next) => {
 
     const user = result.rows[0];
 
-    if (!user.is_active) {
+    if (!user.is_verified) {
       return res.status(401).json({
-        error: 'Account disabled',
-        message: 'Your account has been disabled'
+        error: 'Account not verified',
+        message: 'Your account is not verified'
       });
     }
 
     req.user = {
       id: user.id,
-      name: user.name,
+      first_name: user.first_name,
+      last_name: user.last_name,
       email: user.email,
       role: user.role
     };
@@ -106,15 +107,16 @@ const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       const result = await query(
-        'SELECT id, name, email, role, is_active FROM users WHERE id = $1',
+        'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
         [decoded.userId]
       );
 
-      if (result.rows.length > 0 && result.rows[0].is_active) {
+      if (result.rows.length > 0 && result.rows[0].is_verified) {
         const user = result.rows[0];
         req.user = {
           id: user.id,
-          name: user.name,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email,
           role: user.role
         };

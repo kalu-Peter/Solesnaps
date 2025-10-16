@@ -24,13 +24,13 @@ const getAllUsers = async (req, res) => {
     }
 
     if (is_active !== undefined) {
-      whereConditions.push(`is_active = $${paramIndex}`);
+      whereConditions.push(`is_verified = $${paramIndex}`);
       queryParams.push(is_active === 'true');
       paramIndex++;
     }
 
     if (search) {
-      whereConditions.push(`(name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
+      whereConditions.push(`(CONCAT(first_name, ' ', last_name) ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
@@ -40,8 +40,8 @@ const getAllUsers = async (req, res) => {
 
     const usersQuery = `
       SELECT 
-        id, name, email, role, phone, avatar_url, date_of_birth,
-        gender, is_active, created_at, updated_at
+        id, first_name, last_name, email, role, phone, 
+        date_of_birth, gender, is_verified, created_at, updated_at
       FROM users
       ${whereClause}
       ORDER BY created_at DESC
@@ -86,8 +86,8 @@ const getUser = async (req, res) => {
 
     const result = await query(
       `SELECT 
-        id, name, email, role, phone, avatar_url, date_of_birth,
-        gender, is_active, created_at, updated_at
+        id, first_name, last_name, email, role, phone, 
+        date_of_birth, gender, is_verified, created_at, updated_at
       FROM users WHERE id = $1`,
       [id]
     );
@@ -119,13 +119,14 @@ const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { 
-      name, 
+      first_name, 
+      last_name,
       email, 
       role, 
-      phone, 
-      date_of_birth, 
-      gender, 
-      is_active 
+      phone,
+      date_of_birth,
+      gender,
+      is_verified 
     } = req.body;
 
     // Check if email is already taken by another user
@@ -145,17 +146,18 @@ const updateUser = async (req, res) => {
 
     const result = await query(
       `UPDATE users SET
-        name = COALESCE($1, name),
-        email = COALESCE($2, email),
-        role = COALESCE($3, role),
-        phone = COALESCE($4, phone),
-        date_of_birth = COALESCE($5, date_of_birth),
-        gender = COALESCE($6, gender),
-        is_active = COALESCE($7, is_active),
+        first_name = COALESCE($1, first_name),
+        last_name = COALESCE($2, last_name),
+        email = COALESCE($3, email),
+        role = COALESCE($4, role),
+        phone = COALESCE($5, phone),
+        date_of_birth = COALESCE($6, date_of_birth),
+        gender = COALESCE($7, gender),
+        is_verified = COALESCE($8, is_verified),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
-      RETURNING id, name, email, role, phone, date_of_birth, gender, is_active, updated_at`,
-      [name, email, role, phone, date_of_birth, gender, is_active, id]
+      WHERE id = $9
+      RETURNING id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, updated_at`,
+      [first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, id]
     );
 
     if (result.rows.length === 0) {
@@ -194,9 +196,9 @@ const deleteUser = async (req, res) => {
       });
     }
 
-    // Soft delete by setting is_active to false
+    // Soft delete by setting is_verified to false
     const result = await query(
-      'UPDATE users SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
+      'UPDATE users SET is_verified = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
       [id]
     );
 
@@ -223,11 +225,11 @@ const deleteUser = async (req, res) => {
 const toggleUserStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_active } = req.body;
+    const { is_verified } = req.body;
     const currentUserId = req.user.id;
 
     // Prevent admin from deactivating themselves
-    if (id == currentUserId && is_active === false) {
+    if (id == currentUserId && is_verified === false) {
       return res.status(400).json({
         error: 'Cannot deactivate own account',
         message: 'You cannot deactivate your own account'
@@ -235,8 +237,8 @@ const toggleUserStatus = async (req, res) => {
     }
 
     const result = await query(
-      'UPDATE users SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, name, email, is_active',
-      [is_active, id]
+      'UPDATE users SET is_verified = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, first_name, last_name, email, is_verified',
+      [is_verified, id]
     );
 
     if (result.rows.length === 0) {
@@ -247,7 +249,7 @@ const toggleUserStatus = async (req, res) => {
     }
 
     const user = result.rows[0];
-    const action = is_active ? 'activated' : 'deactivated';
+    const action = is_verified ? 'activated' : 'deactivated';
 
     res.json({
       message: `User ${action} successfully`,
@@ -272,7 +274,7 @@ const getUserStats = async (req, res) => {
       SELECT 
         role,
         COUNT(*) as count,
-        COUNT(CASE WHEN is_active = true THEN 1 END) as active_count
+        COUNT(CASE WHEN is_verified = true THEN 1 END) as active_count
       FROM users 
       GROUP BY role
     `);
@@ -292,7 +294,7 @@ const getUserStats = async (req, res) => {
     const totalStatsResult = await query(`
       SELECT 
         COUNT(*) as total_users,
-        COUNT(CASE WHEN is_active = true THEN 1 END) as active_users,
+        COUNT(CASE WHEN is_verified = true THEN 1 END) as active_users,
         COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_users,
         COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as recent_registrations
       FROM users
@@ -319,13 +321,14 @@ const getUserStats = async (req, res) => {
 const createUser = async (req, res) => {
   try {
     const { 
-      name, 
+      first_name, 
+      last_name,
       email, 
       password, 
-      role = 'user', 
-      phone, 
-      date_of_birth, 
-      gender 
+      role = 'customer', 
+      phone,
+      date_of_birth,
+      gender
     } = req.body;
 
     // Check if user already exists
@@ -347,10 +350,10 @@ const createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const result = await query(
-      `INSERT INTO users (name, email, password, role, phone, date_of_birth, gender, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, name, email, role, phone, date_of_birth, gender, is_active, created_at`,
-      [name, email, hashedPassword, role, phone, date_of_birth, gender, true]
+      `INSERT INTO users (first_name, last_name, email, password, role, phone, date_of_birth, gender, is_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, created_at`,
+      [first_name, last_name, email, hashedPassword, role, phone, date_of_birth, gender, true]
     );
 
     res.status(201).json({
