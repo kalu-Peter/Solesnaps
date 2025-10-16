@@ -11,7 +11,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import shoe1 from "@/assets/shoe-1.jpg";
 import shoe2 from "@/assets/shoe-2.jpg";
-import { Filter, Grid, List, Info } from "lucide-react";
+import { Filter, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -23,8 +23,6 @@ import { productService, Product } from "@/services/productService";
 
 const Shoes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [priceRange, setPriceRange] = useState([0, 50000]);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sizeFormat, setSizeFormat] = useState<"US" | "UK">("US");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedGender, setSelectedGender] = useState<string>("all");
@@ -262,154 +260,160 @@ const Shoes = () => {
       <section className="py-8">
         <div className="container mx-auto px-4">
           {/* Filters Toolbar */}
-          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
+          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              {/* Left Side - Product Count and Filters */}
+              <div className="flex flex-wrap items-center gap-4 flex-1">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Showing {shoes.length} products
                 </span>
-                <div className="h-4 w-px bg-border"></div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <Select defaultValue="featured">
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="featured">Featured</SelectItem>
-                    <SelectItem value="price-low">
-                      Price: Low to High
-                    </SelectItem>
-                    <SelectItem value="price-high">
-                      Price: High to Low
-                    </SelectItem>
-                    <SelectItem value="name">Name A-Z</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            
-
-            {/* Filters Row */}
-            
-
-              {/* Gender */}
-              <div>
-                {/*<h4 className="font-medium text-foreground mb-2 text-sm">Gender</h4>*/}
-                <Select 
-                  value={selectedGender}
-                  onValueChange={(value) => {
-                    setSelectedGender(value);
-                    if (value === "all") {
-                      searchParams.delete('gender');
-                    } else {
-                      searchParams.set('gender', value);
-                    }
-                    setSearchParams(searchParams);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Genders</SelectItem>
-                    <SelectItem value="male">Men's</SelectItem>
-                    <SelectItem value="female">Women's</SelectItem>
-                    <SelectItem value="unisex">Unisex</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Price Range */}
-              {/*<div>
-                <h4 className="font-medium text-foreground mb-2 text-sm">
-                  Price Range
-                </h4>
-                <div className="px-2">
-                  <Slider
-                    value={priceRange}
-                    onValueChange={setPriceRange}
-                    max={50000}
-                    min={0}
-                    step={1000}
-                    className="mb-2"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>KES {priceRange[0].toLocaleString()}</span>
-                    <span>KES {priceRange[1].toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>*/}
-
-              {/* Size */}
-              <div>
-                {/*<h4 className="font-medium text-foreground mb-2 text-sm">Size</h4>*/}
-                <div className="space-y-2">
-                  <Select
-                    value={sizeFormat}
-                    onValueChange={(value: "US" | "UK") =>
-                      setSizeFormat(value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
+                <div className="h-4 w-px bg-border hidden lg:block"></div>
+                
+                {/* Category Filter */}
+                <div className="min-w-[140px]">
+                  <Select defaultValue="all">
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="US">US Sizes</SelectItem>
-                      <SelectItem value="UK">UK Sizes</SelectItem>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="sneakers">Sneakers</SelectItem>
+                      <SelectItem value="sandals">Sandals</SelectItem>
+                      <SelectItem value="dress">Dress Shoes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Gender Filter */}
+                <div className="min-w-[130px]">
+                  <Select 
+                    value={selectedGender}
+                    onValueChange={(value) => {
+                      setSelectedGender(value);
+                      if (value === "all") {
+                        searchParams.delete('gender');
+                      } else {
+                        searchParams.set('gender', value);
+                      }
+                      setSearchParams(searchParams);
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Genders</SelectItem>
+                      <SelectItem value="male">Men's</SelectItem>
+                      <SelectItem value="female">Women's</SelectItem>
+                      <SelectItem value="unisex">Unisex</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Size Filter */}
+                <div className="min-w-[120px]">
+                  <Select
+                    value={selectedSizes.length > 0 ? `${selectedSizes.length} size${selectedSizes.length > 1 ? 's' : ''}` : "Size"}
+                    onValueChange={() => {}} // Handled in content
+                  > 
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Size" /> Size
+                    </SelectTrigger>
+                    <SelectContent>
+                      <div className="p-3 space-y-3">
+                        {/* Size Format Toggle */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">Format:</span>
+                          <div className="flex border border-border rounded overflow-hidden">
+                            <Button
+                              variant={sizeFormat === "US" ? "default" : "ghost"}
+                              size="sm"
+                              className="h-6 px-3 text-xs rounded-none"
+                              onClick={() => setSizeFormat("US")}
+                            >
+                              US
+                            </Button>
+                            <Button
+                              variant={sizeFormat === "UK" ? "default" : "ghost"}
+                              size="sm"
+                              className="h-6 px-3 text-xs rounded-none"
+                              onClick={() => setSizeFormat("UK")}
+                            >
+                              UK
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {/* Size Grid */}
+                        <div className="grid grid-cols-3 gap-1">
+                          {(sizeFormat === "US"
+                            ? ["7", "8", "9", "10", "11", "12"]
+                            : ["6", "7", "8", "9", "10", "11"]
+                          ).map((size) => {
+                            const isSelected = selectedSizes.includes(`${sizeFormat}-${size}`);
+                            return (
+                              <Button
+                                key={size}
+                                variant={isSelected ? "default" : "outline"}
+                                size="sm"
+                                className="h-8 text-xs"
+                                onClick={() => {
+                                  const sizeKey = `${sizeFormat}-${size}`;
+                                  setSelectedSizes((prev) =>
+                                    isSelected
+                                      ? prev.filter((s) => s !== sizeKey)
+                                      : [...prev, sizeKey]
+                                  );
+                                }}
+                              >
+                                {size}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Selected Sizes & Clear */}
+                        {selectedSizes.length > 0 && (
+                          <div className="pt-2 border-t border-border">
+                            <div className="text-xs text-muted-foreground mb-2">
+                              Selected: {selectedSizes.map((size) => size.split("-")[1]).join(", ")}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => setSelectedSizes([])}
+                            >
+                              Clear All
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-            </div>
 
-            {/* Size Selection Row */}
-            <div className="mt-4 pt-4 border-t border-border">
-              <div className="flex flex-wrap gap-2">
-                {(sizeFormat === "US"
-                  ? ["7", "8", "9", "10", "11", "12"]
-                  : ["6", "7", "8", "9", "10", "11"]
-                ).map((size) => {
-                  const isSelected = selectedSizes.includes(
-                    `${sizeFormat}-${size}`
-                  );
-                  return (
-                    <Button
-                      key={size}
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 w-12"
-                      onClick={() => {
-                        const sizeKey = `${sizeFormat}-${size}`;
-                        setSelectedSizes((prev) =>
-                          isSelected
-                            ? prev.filter((s) => s !== sizeKey)
-                            : [...prev, sizeKey]
-                        );
-                      }}
-                    >
-                      {size}
-                    </Button>
-                  );
-                })}
+              {/* Right Side - Sort Control */}
+              <div className="flex items-center">
+                <Select defaultValue="featured">
+                  <SelectTrigger className="w-40 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="featured">Featured</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              {selectedSizes.length > 0 && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Selected sizes: {selectedSizes
-                    .map((size) => size.split("-")[1])
-                    .join(", ")}
-                </div>
-              )}
             </div>
           </div>
 
           {/* Products Grid */}
           {loading ? (
-            <div className={`grid gap-6 ${
-              viewMode === "grid"
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1"
-            }`}>
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="h-80 bg-muted animate-pulse rounded-lg"></div>
               ))}
@@ -419,13 +423,8 @@ const Shoes = () => {
               <p className="text-muted-foreground">Unable to load shoes. Please try again later.</p>
             </div>
           ) : (
-            <div
-              className={`grid gap-6 ${
-                viewMode === "grid"
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                  : "grid-cols-1"
-              }`}
-            >
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            
               {shoes.map((shoe) => (
                 <ProductCard 
                   key={shoe.id}
