@@ -1,5 +1,15 @@
 const { query, transaction } = require('../config/database');
 
+// Helper function to generate slug from product name
+const generateSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .trim('-'); // Remove leading/trailing hyphens
+};
+
 // Get all products with filtering and pagination
 const getProducts = async (req, res) => {
   try {
@@ -73,16 +83,30 @@ const getProducts = async (req, res) => {
 
     const whereClause = whereConditions.join(' AND ');
 
-    // Get products
+    // Get products with images
     const productsQuery = `
       SELECT 
         p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.images, p.rating, p.review_count,
-        p.is_featured, p.created_at, p.updated_at,
-        c.name as category_name, c.id as category_id
+        p.brand, p.colors, p.sizes, p.is_featured, p.is_active,
+        p.created_at, p.updated_at,
+        c.name as category_name, c.id as category_id,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.url,
+              'alt_text', pi.alt_text,
+              'is_primary', pi.is_primary,
+              'sort_order', pi.sort_order
+            ) ORDER BY pi.is_primary DESC, pi.sort_order ASC
+          ) FILTER (WHERE pi.id IS NOT NULL),
+          '[]'::json
+        ) as images
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id
       WHERE ${whereClause}
+      GROUP BY p.id, c.id, c.name
       ORDER BY p.${sortColumn} ${sortDirection.toUpperCase()}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
@@ -143,12 +167,26 @@ const getProduct = async (req, res) => {
     const productQuery = `
       SELECT 
         p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.images, p.rating, p.review_count,
-        p.is_featured, p.is_active, p.created_at, p.updated_at,
-        c.name as category_name, c.id as category_id
+        p.brand, p.colors, p.sizes, p.is_featured, p.is_active, 
+        p.created_at, p.updated_at,
+        c.name as category_name, c.id as category_id,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.url,
+              'alt_text', pi.alt_text,
+              'is_primary', pi.is_primary,
+              'sort_order', pi.sort_order
+            ) ORDER BY pi.is_primary DESC, pi.sort_order ASC
+          ) FILTER (WHERE pi.id IS NOT NULL),
+          '[]'::json
+        ) as images
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id
       WHERE p.id = $1 AND p.is_active = true
+      GROUP BY p.id, c.id, c.name
     `;
 
     const result = await query(productQuery, [id]);
@@ -187,19 +225,21 @@ const createProduct = async (req, res) => {
       brand,
       colors,
       sizes,
-      images,
       is_featured = false
     } = req.body;
 
+    // Generate slug from product name
+    const slug = generateSlug(name);
+
     const result = await query(
       `INSERT INTO products (
-        name, description, price, stock_quantity, category_id, brand,
-        colors, sizes, images, is_featured, is_active
+        name, slug, description, price, stock_quantity, category_id, brand,
+        colors, sizes, is_featured, is_active
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *`,
       [
-        name, description, price, stock_quantity, category_id, brand,
-        JSON.stringify(colors), JSON.stringify(sizes), JSON.stringify(images),
+        name, slug, description, price, stock_quantity, category_id, brand,
+        JSON.stringify(colors || []), JSON.stringify(sizes || []),
         is_featured, true
       ]
     );
@@ -241,12 +281,12 @@ const updateProduct = async (req, res) => {
       `UPDATE products SET
         name = $1, description = $2, price = $3, stock_quantity = $4,
         category_id = $5, brand = $6, colors = $7, sizes = $8,
-        images = $9, is_featured = $10, is_active = $11, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $12
+        is_featured = $9, is_active = $10, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $11
       RETURNING *`,
       [
         name, description, price, stock_quantity, category_id, brand,
-        JSON.stringify(colors), JSON.stringify(sizes), JSON.stringify(images),
+        JSON.stringify(colors), JSON.stringify(sizes),
         is_featured, is_active, id
       ]
     );
@@ -361,12 +401,26 @@ const getFeaturedProducts = async (req, res) => {
     const result = await query(
       `SELECT 
         p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.images, p.rating, p.review_count,
+        p.brand, p.colors, p.sizes, p.is_featured, p.is_active,
         p.created_at, p.updated_at,
-        c.name as category_name, c.id as category_id
+        c.name as category_name, c.id as category_id,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.url,
+              'alt_text', pi.alt_text,
+              'is_primary', pi.is_primary,
+              'sort_order', pi.sort_order
+            ) ORDER BY pi.is_primary DESC, pi.sort_order ASC
+          ) FILTER (WHERE pi.id IS NOT NULL),
+          '[]'::json
+        ) as images
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id
       WHERE p.is_featured = true AND p.is_active = true
+      GROUP BY p.id, c.id, c.name
       ORDER BY p.created_at DESC
       LIMIT $1`,
       [limit]

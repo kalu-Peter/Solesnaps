@@ -64,18 +64,26 @@ interface Category {
   image_url?: string;
 }
 
+interface ProductImage {
+  id: number;
+  image_url: string;
+  alt_text?: string;
+  is_primary: boolean;
+  sort_order: number;
+}
+
 interface Product {
   id: number;
   name: string;
   description?: string;
-  price: number;
+  price: string;
   stock_quantity: number;
   category_id: number;
   category_name?: string;
   brand: string;
   colors?: string[];
   sizes?: string[];
-  images?: string[];
+  images?: ProductImage[];
   sku?: string;
   is_featured: boolean;
   is_active: boolean;
@@ -124,13 +132,14 @@ const AdminProducts = () => {
     is_featured: false,
   });
 
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
   // API Functions
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch('http://localhost:5000/api/products/categories', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -154,7 +163,7 @@ const AdminProducts = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('auth_token');
       
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -167,11 +176,17 @@ const AdminProducts = () => {
         if (category) params.append('category', category.name);
       }
 
+      // Prepare headers - only include Authorization if token exists and is valid
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token && token !== 'null' && token.trim() !== '') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`http://localhost:5000/api/products?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       });
 
       if (!response.ok) {
@@ -196,7 +211,7 @@ const AdminProducts = () => {
   const createProduct = async () => {
     try {
       setIsSubmitting(true);
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('auth_token');
 
       const productData = {
         name: formData.name.trim(),
@@ -207,10 +222,13 @@ const AdminProducts = () => {
         brand: formData.brand.trim(),
         colors: formData.colors,
         sizes: formData.sizes,
-        images: formData.images,
+        images: [], // Required by validation - images will be uploaded separately
         is_featured: formData.is_featured,
       };
 
+      console.log('Creating product with data:', productData);
+
+      // Create product first
       const response = await fetch('http://localhost:5000/api/products', {
         method: 'POST',
         headers: {
@@ -222,7 +240,32 @@ const AdminProducts = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Product creation error:', errorData);
+        
+        // Handle validation errors
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const validationErrors = errorData.details.map(err => `${err.field}: ${err.message}`).join(', ');
+          throw new Error(`Validation failed: ${validationErrors}`);
+        }
+        
         throw new Error(errorData.message || 'Failed to create product');
+      }
+
+      const result = await response.json();
+      const productId = result.data.product.id;
+
+      // Upload images if any were selected
+      if (selectedFiles.length > 0) {
+        try {
+          await uploadImages(productId);
+        } catch (imageError) {
+          console.error('Error uploading images:', imageError);
+          toast({
+            title: "Warning",
+            description: "Product created but some images failed to upload",
+            variant: "destructive",
+          });
+        }
       }
 
       toast({
@@ -258,6 +301,99 @@ const AdminProducts = () => {
       images: [],
       is_featured: false,
     });
+    setSelectedFiles([]);
+    setImagePreviews([]);
+  };
+
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    
+    // Limit to 5 files
+    if (files.length > 5) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload up to 5 images",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file types and sizes
+    const validFiles: File[] = [];
+    const previews: string[] = [];
+
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not an image file`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: `${file.name} is larger than 5MB`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      validFiles.push(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previews.push(e.target?.result as string);
+        if (previews.length === validFiles.length) {
+          setImagePreviews(previews);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setSelectedFiles(validFiles);
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    setImagePreviews(newPreviews);
+  };
+
+  const uploadImages = async (productId: number) => {
+    if (selectedFiles.length === 0) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('product_id', productId.toString());
+      
+      selectedFiles.forEach((file, index) => {
+        formData.append('images', file);
+      });
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:5000/api/products/images', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upload images');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      throw error;
+    }
   };
 
   // Load data on component mount
@@ -436,17 +572,44 @@ const AdminProducts = () => {
                 </div>
                 
                 <div className="grid gap-2">
-                  <Label htmlFor="images">Image URLs (comma separated)</Label>
-                  <Textarea
-                    id="images"
-                    value={formData.images.join(', ')}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      images: e.target.value.split(',').map(img => img.trim()).filter(img => img)
-                    })}
-                    placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                    rows={2}
-                  />
+                  <Label htmlFor="images">Product Images (up to 5 images)</Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="images"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileSelection}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Supported formats: JPEG, PNG, WebP. Maximum 5MB per image.
+                    </p>
+                    
+                    {/* Image Previews */}
+                    {imagePreviews.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-20 object-cover rounded border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0"
+                              onClick={() => removeImage(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -558,9 +721,16 @@ const AdminProducts = () => {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <img
-                            src={product.images?.[0] || "/api/placeholder/80/80"}
+                            src={
+                              Array.isArray(product.images) && product.images.length > 0
+                                ? `http://localhost:5000${product.images[0].image_url}`
+                                : "/api/placeholder/80/80"
+                            }
                             alt={product.name}
                             className="h-10 w-10 rounded object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/api/placeholder/80/80";
+                            }}
                           />
                           <div>
                             <div className="font-medium">{product.name}</div>
@@ -574,7 +744,7 @@ const AdminProducts = () => {
                         <Badge variant="secondary">{product.category_name || "N/A"}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${product.price.toFixed(2)}
+                        ${parseFloat(product.price).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <div>
