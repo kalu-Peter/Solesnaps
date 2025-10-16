@@ -10,6 +10,7 @@ const {
 
 // User routes
 router.post('/', authenticateToken, validateCreateOrder, ordersController.createOrder);
+router.post('/checkout', authenticateToken, ordersController.createOrderWithDelivery); // Require authentication for checkout
 router.get('/my-orders', authenticateToken, ordersController.getUserOrders);
 router.get('/:id', authenticateToken, ordersController.getOrder);
 router.post('/:id/cancel', authenticateToken, ordersController.cancelOrder);

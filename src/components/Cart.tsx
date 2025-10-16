@@ -9,11 +9,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { fetchDeliveryLocations } from "@/lib/delivery";
 import { fetchProductPrices } from "@/lib/products";
 import { DeliveryLocation } from "@/types/cart";
 import CartItem from "./CartItem";
+import CheckoutDialog from "./CheckoutDialog";
+import AuthModal from "./AuthModal";
 import { ShoppingBag, ShoppingCart, Trash2, CreditCard } from "lucide-react";
 
 export default function Cart() {
@@ -34,6 +37,9 @@ export default function Cart() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [currentPrices, setCurrentPrices] = useState<Record<number, number>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (isOpen && deliveryLocations.length === 0 && !loadingLocations) {
@@ -226,10 +232,27 @@ export default function Cart() {
               </div>
 
               {/* Checkout Button */}
-              <Button className="w-full" size="lg" disabled={!selectedDeliveryLocation || selectedDeliveryLocation.pickup_status !== "active"}>
-                <CreditCard className="h-4 w-4 mr-2" />
-                Checkout
-              </Button>
+              {isAuthenticated ? (
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  disabled={!selectedDeliveryLocation || selectedDeliveryLocation.pickup_status !== "active"}
+                  onClick={() => setShowCheckout(true)}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Checkout
+                </Button>
+              ) : (
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => setShowAuthModal(true)}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Login to Checkout
+                </Button>
+              )}
 
               {/* Continue Shopping */}
               <Button variant="outline" className="w-full" onClick={closeCart}>
@@ -240,6 +263,26 @@ export default function Cart() {
             </div>
           </>
         )}
+
+        {/* Checkout Dialog */}
+        {selectedDeliveryLocation && isAuthenticated && (
+          <CheckoutDialog
+            isOpen={showCheckout}
+            onClose={() => setShowCheckout(false)}
+            subtotal={calculatedTotalPrice}
+            shippingCost={Number(shippingCost || 0)}
+            deliveryLocation={selectedDeliveryLocation}
+            cartItems={items}
+            currentPrices={currentPrices}
+          />
+        )}
+
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="signin"
+        />
       </SheetContent>
     </Sheet>
   );

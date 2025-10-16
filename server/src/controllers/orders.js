@@ -1,9 +1,126 @@
 const { query, transaction } = require('../config/database');
 
-// Create new order
+// Create new order with delivery location
+const createOrderWithDelivery = async (req, res) => {
+  try {
+    // Get authenticated user ID
+    const userId = req.user.id;
+    
+    const { 
+      delivery_location_id,
+      payment_method,
+      subtotal_amount,
+      shipping_amount,
+      total_amount,
+      order_items
+    } = req.body;
+
+    // Validate required fields
+    if (!delivery_location_id || !payment_method || !order_items || order_items.length === 0) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'delivery_location_id, payment_method, and order_items are required'
+      });
+    }
+
+    const result = await transaction(async (client) => {
+      // Validate delivery location exists and is active
+      const locationResult = await client.query(
+        'SELECT * FROM delivery_locations WHERE id = $1 AND pickup_status = $2',
+        [delivery_location_id, 'active']
+      );
+
+      if (locationResult.rows.length === 0) {
+        throw new Error('Invalid or inactive delivery location');
+      }
+
+      // Validate products and stock
+      for (const item of order_items) {
+        const productResult = await client.query(
+          'SELECT id, name, price, stock_quantity FROM products WHERE id = $1 AND is_active = true',
+          [item.product_id]
+        );
+
+        if (productResult.rows.length === 0) {
+          throw new Error(`Product with ID ${item.product_id} not found`);
+        }
+
+        const product = productResult.rows[0];
+
+        if (product.stock_quantity < item.quantity) {
+          throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock_quantity}, Requested: ${item.quantity}`);
+        }
+
+        // Update product stock
+        await client.query(
+          'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
+      }
+
+      // Create order
+      const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+      const orderResult = await client.query(
+        `INSERT INTO orders (
+          user_id, order_number, delivery_location_id, total_amount, subtotal_amount, shipping_amount,
+          status, payment_method, shipping_address, billing_address, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING *`,
+        [
+          userId, 
+          orderNumber, 
+          delivery_location_id, 
+          total_amount, 
+          subtotal_amount, 
+          shipping_amount, 
+          'pending', 
+          payment_method,
+          JSON.stringify({ delivery_location_id }), // Use delivery location as shipping address
+          JSON.stringify({ delivery_location_id })  // Use delivery location as billing address for now
+        ]
+      );
+
+      const order = orderResult.rows[0];
+
+      // Create order items
+      for (const item of order_items) {
+        await client.query(
+          `INSERT INTO order_items (
+            order_id, product_id, quantity, price
+          ) VALUES ($1, $2, $3, $4)`,
+          [order.id, item.product_id, item.quantity, item.unit_price]
+        );
+      }
+
+      return {
+        order,
+        delivery_location: locationResult.rows[0],
+        items: order_items
+      };
+    });
+
+    res.status(201).json({
+      message: 'Order created successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Create order error:', error);
+    
+    if (error.message.includes('not found') || error.message.includes('Insufficient stock') || error.message.includes('Invalid')) {
+      return res.status(400).json({
+        error: 'Order creation failed',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'Order creation failed',
+      message: 'An internal server error occurred'
+    });
+  }
+};
+
+// Create new order (original method)
 const createOrder = async (req, res) => {
-  const client = await transaction();
-  
   try {
     const userId = req.user.id;
     const { 
@@ -13,84 +130,83 @@ const createOrder = async (req, res) => {
       notes 
     } = req.body;
 
-    await client.query('BEGIN');
+    const result = await transaction(async (client) => {
+      // Calculate total amount and validate products
+      let totalAmount = 0;
+      const orderItems = [];
 
-    // Calculate total amount and validate products
-    let totalAmount = 0;
-    const orderItems = [];
+      for (const item of items) {
+        const productResult = await client.query(
+          'SELECT id, name, price, stock_quantity FROM products WHERE id = $1 AND is_active = true',
+          [item.product_id]
+        );
 
-    for (const item of items) {
-      const productResult = await client.query(
-        'SELECT id, name, price, stock_quantity FROM products WHERE id = $1 AND is_active = true',
-        [item.product_id]
-      );
+        if (productResult.rows.length === 0) {
+          throw new Error(`Product with ID ${item.product_id} not found`);
+        }
 
-      if (productResult.rows.length === 0) {
-        throw new Error(`Product with ID ${item.product_id} not found`);
+        const product = productResult.rows[0];
+
+        if (product.stock_quantity < item.quantity) {
+          throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock_quantity}, Requested: ${item.quantity}`);
+        }
+
+        const itemTotal = product.price * item.quantity;
+        totalAmount += itemTotal;
+
+        orderItems.push({
+          product_id: item.product_id,
+          product_name: product.name,
+          quantity: item.quantity,
+          price: product.price,
+          size: item.size,
+          color: item.color,
+          total: itemTotal
+        });
+
+        // Update product stock
+        await client.query(
+          'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
       }
 
-      const product = productResult.rows[0];
+      // Create order
+      const orderResult = await client.query(
+        `INSERT INTO orders (
+          user_id, total_amount, status, shipping_address, payment_method, notes
+        ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [userId, totalAmount, 'pending', JSON.stringify(shipping_address), payment_method, notes]
+      );
 
-      if (product.stock_quantity < item.quantity) {
-        throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock_quantity}, Requested: ${item.quantity}`);
+      const order = orderResult.rows[0];
+
+      // Create order items
+      for (const item of orderItems) {
+        await client.query(
+          `INSERT INTO order_items (
+            order_id, product_id, quantity, price, size, color
+          ) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [order.id, item.product_id, item.quantity, item.price, item.size, item.color]
+        );
       }
 
-      const itemTotal = product.price * item.quantity;
-      totalAmount += itemTotal;
+      // Clear user's cart
+      await client.query('DELETE FROM cart WHERE user_id = $1', [userId]);
 
-      orderItems.push({
-        product_id: item.product_id,
-        product_name: product.name,
-        quantity: item.quantity,
-        price: product.price,
-        size: item.size,
-        color: item.color,
-        total: itemTotal
-      });
-
-      // Update product stock
-      await client.query(
-        'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2',
-        [item.quantity, item.product_id]
-      );
-    }
-
-    // Create order
-    const orderResult = await client.query(
-      `INSERT INTO orders (
-        user_id, total_amount, status, shipping_address, payment_method, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [userId, totalAmount, 'pending', JSON.stringify(shipping_address), payment_method, notes]
-    );
-
-    const order = orderResult.rows[0];
-
-    // Create order items
-    for (const item of orderItems) {
-      await client.query(
-        `INSERT INTO order_items (
-          order_id, product_id, quantity, price, size, color
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [order.id, item.product_id, item.quantity, item.price, item.size, item.color]
-      );
-    }
-
-    // Clear user's cart
-    await client.query('DELETE FROM cart WHERE user_id = $1', [userId]);
-
-    await client.query('COMMIT');
-
-    res.status(201).json({
-      message: 'Order created successfully',
-      data: {
+      return {
         order: {
           ...order,
           items: orderItems
         }
-      }
+      };
+    });
+
+    res.status(201).json({
+      message: 'Order created successfully',
+      data: result
     });
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('Create order error:', error);
     
     if (error.message.includes('not found') || error.message.includes('Insufficient stock')) {
@@ -104,8 +220,6 @@ const createOrder = async (req, res) => {
       error: 'Failed to create order',
       message: 'An error occurred while creating the order'
     });
-  } finally {
-    client.release();
   }
 };
 
@@ -285,64 +399,59 @@ const updateOrderStatus = async (req, res) => {
 
 // Cancel order (User can cancel pending orders)
 const cancelOrder = async (req, res) => {
-  const client = await transaction();
-  
   try {
     const { id } = req.params;
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
 
-    await client.query('BEGIN');
+    await transaction(async (client) => {
+      // Get order details
+      let orderQuery = 'SELECT * FROM orders WHERE id = $1';
+      let orderParams = [id];
 
-    // Get order details
-    let orderQuery = 'SELECT * FROM orders WHERE id = $1';
-    let orderParams = [id];
+      if (!isAdmin) {
+        orderQuery += ' AND user_id = $2';
+        orderParams.push(userId);
+      }
 
-    if (!isAdmin) {
-      orderQuery += ' AND user_id = $2';
-      orderParams.push(userId);
-    }
+      const orderResult = await client.query(orderQuery, orderParams);
 
-    const orderResult = await client.query(orderQuery, orderParams);
+      if (orderResult.rows.length === 0) {
+        throw new Error('Order not found');
+      }
 
-    if (orderResult.rows.length === 0) {
-      throw new Error('Order not found');
-    }
+      const order = orderResult.rows[0];
 
-    const order = orderResult.rows[0];
+      // Check if order can be cancelled
+      if (!isAdmin && !['pending', 'confirmed'].includes(order.status)) {
+        throw new Error('Order cannot be cancelled at this stage');
+      }
 
-    // Check if order can be cancelled
-    if (!isAdmin && !['pending', 'confirmed'].includes(order.status)) {
-      throw new Error('Order cannot be cancelled at this stage');
-    }
-
-    // Get order items to restore stock
-    const itemsResult = await client.query(
-      'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
-      [id]
-    );
-
-    // Restore product stock
-    for (const item of itemsResult.rows) {
-      await client.query(
-        'UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2',
-        [item.quantity, item.product_id]
+      // Get order items to restore stock
+      const itemsResult = await client.query(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+        [id]
       );
-    }
 
-    // Update order status
-    await client.query(
-      'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-      ['cancelled', id]
-    );
+      // Restore product stock
+      for (const item of itemsResult.rows) {
+        await client.query(
+          'UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
+      }
 
-    await client.query('COMMIT');
+      // Update order status
+      await client.query(
+        'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['cancelled', id]
+      );
+    });
 
     res.json({
       message: 'Order cancelled successfully'
     });
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('Cancel order error:', error);
     
     if (error.message === 'Order not found') {
@@ -363,8 +472,6 @@ const cancelOrder = async (req, res) => {
       error: 'Failed to cancel order',
       message: 'An error occurred while cancelling the order'
     });
-  } finally {
-    client.release();
   }
 };
 
@@ -466,6 +573,7 @@ const getAllOrders = async (req, res) => {
 
 module.exports = {
   createOrder,
+  createOrderWithDelivery,
   getUserOrders,
   getOrder,
   updateOrderStatus,

@@ -24,12 +24,12 @@ const register = async (req, res) => {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    // Create user (auto-verified for development)
     const result = await query(
-      `INSERT INTO users (first_name, last_name, email, password, role) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING id, first_name, last_name, email, role, created_at`,
-      [first_name, last_name, email, hashedPassword, 'customer']
+      `INSERT INTO users (first_name, last_name, email, password, role, is_verified) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING id, first_name, last_name, email, role, is_verified, created_at`,
+      [first_name, last_name, email, hashedPassword, 'customer', true]
     );
 
     const user = result.rows[0];
@@ -82,13 +82,16 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check if account is verified (using is_verified instead of is_active)
+    // Check if account is verified (temporarily disabled for development)
+    // TODO: Re-enable email verification in production
+    /*
     if (!user.is_verified) {
       return res.status(401).json({
         error: 'Account not verified',
         message: 'Please verify your account before logging in.'
       });
     }
+    */
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
