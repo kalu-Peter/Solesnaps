@@ -14,11 +14,10 @@ import shoe1 from "@/assets/shoe-1.jpg";
 import shoe2 from "@/assets/shoe-2.jpg";
 import headphones from "@/assets/headphones.jpg";
 import smartwatch from "@/assets/smartwatch.jpg";
-import { Percent, Flame, Timer, Grid, List, Tag } from "lucide-react";
+import { Percent, Flame, Timer, Tag } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const Sale = () => {
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [timeLeft, setTimeLeft] = useState({
     days: 2,
     hours: 14,
@@ -226,22 +225,55 @@ const Sale = () => {
       {/* Products Section */}
       <section className="py-8">
         <div className="container mx-auto px-4">
-          {/* Enhanced Toolbar with Filters */}
-          <div className="bg-card rounded-lg border border-border p-4 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
+          {/* Filters Toolbar */}
+          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              {/* Left Side - Product Count and Filters */}
+              <div className="flex flex-wrap items-center gap-4 flex-1">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Showing {saleProducts.length} sale items
                 </span>
                 <Badge variant="destructive" className="text-xs animate-pulse">
                   <Flame className="h-3 w-3 mr-1" />
                   Hot Deals
                 </Badge>
+                <div className="h-4 w-px bg-border hidden lg:block"></div>
+                
+                {/* Category Filter */}
+                <div className="min-w-[140px]">
+                  <Select defaultValue="all">
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="shoes">Shoes</SelectItem>
+                      <SelectItem value="electronics">Electronics</SelectItem>
+                      <SelectItem value="accessories">Accessories</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Discount Filter */}
+                <div className="min-w-[130px]">
+                  <Select defaultValue="all">
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Discount" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Discounts</SelectItem>
+                      <SelectItem value="30">30%+ Off</SelectItem>
+                      <SelectItem value="50">50%+ Off</SelectItem>
+                      <SelectItem value="70">70%+ Off</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              {/* Right Side - Sort Control */}
+              <div className="flex items-center">
                 <Select defaultValue="discount">
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -251,51 +283,12 @@ const Sale = () => {
                     <SelectItem value="stock">Stock Level</SelectItem>
                   </SelectContent>
                 </Select>
-
-                <div className="flex border border-border rounded-md">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <Grid className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
               </div>
-            </div>
-
-            {/* Category Filters Row */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
-              <Button variant="default" size="sm">
-                All Categories
-              </Button>
-              <Button variant="outline" size="sm">
-                Shoes
-              </Button>
-              <Button variant="outline" size="sm">
-                30%+ Off
-              </Button>
-              <Button variant="outline" size="sm">
-                Low Stock
-              </Button>
             </div>
           </div>
 
           {/* Products Grid */}
-          <div
-            className={`grid gap-6 ${
-              viewMode === "grid"
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1"
-            }`}
-          >
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {saleProducts.map((product) => (
               <div key={product.id} className="relative">
                 <ProductCard 

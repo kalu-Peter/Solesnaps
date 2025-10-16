@@ -10,12 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Sparkles, Clock, Grid, List, Star } from "lucide-react";
+import { Sparkles, Clock, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { productService, Product } from "@/services/productService";
 
 const NewArrivals = () => {
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [newProducts, setNewProducts] = useState<Product[]>([]);
   const [sortedProducts, setSortedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,22 +150,55 @@ const NewArrivals = () => {
       {/* Products Section */}
       <section className="py-8">
         <div className="container mx-auto px-4">
-          {/* Enhanced Toolbar with Filters */}
-          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-4 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
+          {/* Filters Toolbar */}
+          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              {/* Left Side - Product Count and Filters */}
+              <div className="flex flex-wrap items-center gap-4 flex-1">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Showing {sortedProducts.length} new products
                 </span>
                 <Badge variant="outline" className="text-xs">
                   <Sparkles className="h-3 w-3 mr-1" />
                   Fresh Stock
                 </Badge>
+                <div className="h-4 w-px bg-border hidden lg:block"></div>
+                
+                {/* Category Filter */}
+                <div className="min-w-[140px]">
+                  <Select defaultValue="all">
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="shoes">Shoes</SelectItem>
+                      <SelectItem value="electronics">Electronics</SelectItem>
+                      <SelectItem value="featured">Featured</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Time Filter */}
+                <div className="min-w-[130px]">
+                  <Select defaultValue="all">
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="week">This Week</SelectItem>
+                      <SelectItem value="month">This Month</SelectItem>
+                      <SelectItem value="today">Today</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              {/* Right Side - Sort Control */}
+              <div className="flex items-center">
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -176,40 +208,7 @@ const NewArrivals = () => {
                     <SelectItem value="category">By Category</SelectItem>
                   </SelectContent>
                 </Select>
-
-                <div className="flex border border-border rounded-md">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <Grid className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
               </div>
-            </div>
-
-            {/* Category Filters Row */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
-              <Button variant="default" size="sm">
-                All Categories
-              </Button>
-              <Button variant="outline" size="sm">
-                Shoes
-              </Button>
-              <Button variant="outline" size="sm">
-                This Week
-              </Button>
-              <Button variant="outline" size="sm">
-                Today
-              </Button>
             </div>
           </div>
 
@@ -237,13 +236,7 @@ const NewArrivals = () => {
               </div>
             </div>
           ) : (
-            <div
-              className={`grid gap-6 ${
-                viewMode === "grid"
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                  : "grid-cols-1"
-              }`}
-            >
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {sortedProducts.map((product) => (
                 <div key={product.id} className="relative">
                   <ProductCard 
