@@ -8,14 +8,52 @@ import shoe2 from "@/assets/shoe-2.jpg";
 import headphones from "@/assets/headphones.jpg";
 import smartwatch from "@/assets/smartwatch.jpg";
 import { ArrowRight, Package, Shield, Truck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { productService, Product } from "@/services/productService";
 
 const Index = () => {
-  const products = [
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fallback products for when API is not available
+  const fallbackProducts = [
     { id: 1, name: "Sport Runner Pro", price: "$89.99", category: "Shoes", image: shoe1 },
     { id: 2, name: "Urban Classic", price: "$79.99", category: "Shoes", image: shoe2 },
     { id: 3, name: "Premium Headphones", price: "$159.99", category: "Electronics", image: headphones },
     { id: 4, name: "Smart Watch Pro", price: "$299.99", category: "Electronics", image: smartwatch },
   ];
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        // Try to fetch featured products first, fallback to all products
+        const response = await productService.getFeaturedProducts(8);
+        
+        if (response.data.products.length === 0) {
+          // If no featured products, get latest products
+          const allProductsResponse = await productService.getProducts({ 
+            limit: 8, 
+            sort_by: 'created_at', 
+            sort_order: 'desc' 
+          });
+          setProducts(allProductsResponse.data.products);
+        } else {
+          setProducts(response.data.products);
+        }
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+        setError('Failed to load products');
+        // Use fallback products when API is not available
+        setProducts(fallbackProducts as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,15 +124,27 @@ const Index = () => {
               Featured Products
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Explore our curated selection of premium shoes and cutting-edge electronics
+              Explore our curated selection of premium products
             </p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-80 bg-muted animate-pulse rounded-lg"></div>
+              ))}
+            </div>
+          ) : error && products.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Unable to load products. Please try again later.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {products.map((product) => (
+                <ProductCard key={product.id} {...product} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

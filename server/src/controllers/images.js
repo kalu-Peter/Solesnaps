@@ -95,7 +95,7 @@ const uploadProductImages = async (req, res) => {
       const isPrimary = isFirstImage && i === 0;
       
       const result = await query(
-        `INSERT INTO product_images (product_id, image_url, alt_text, is_primary, sort_order)
+        `INSERT INTO product_images (product_id, url, alt_text, is_primary, sort_order)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
         [product_id, imageUrl, `Product image ${sortOrder + 1}`, isPrimary, sortOrder]

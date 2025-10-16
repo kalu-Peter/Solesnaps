@@ -12,20 +12,26 @@ import { Slider } from "@/components/ui/slider";
 import shoe1 from "@/assets/shoe-1.jpg";
 import shoe2 from "@/assets/shoe-2.jpg";
 import { Filter, Grid, List, Info } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { productService, Product } from "@/services/productService";
 
 const Shoes = () => {
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sizeFormat, setSizeFormat] = useState<"US" | "UK">("US");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [shoes, setShoes] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
 
-  const shoes = [
+  // Fallback shoes data for when API is not available
+  const fallbackShoes = [
     {
       id: 201,
       name: "Sport Runner Pro",
@@ -83,6 +89,58 @@ const Shoes = () => {
       image: shoe2,
     },
   ];
+
+  useEffect(() => {
+    const fetchShoesAndCategories = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch categories to filter for shoe-related categories
+        const categoriesResponse = await productService.getCategories();
+        const allCategories = categoriesResponse.data.categories;
+        
+        // Filter for shoe-related categories (you can adjust this logic)
+        const shoeCategories = allCategories.filter(cat => 
+          cat.name.toLowerCase().includes('shoe') || 
+          cat.name.toLowerCase().includes('sneaker') ||
+          cat.name.toLowerCase().includes('boot') ||
+          cat.name.toLowerCase().includes('sandal') ||
+          cat.name.toLowerCase().includes('slipper')
+        );
+        
+        setCategories(shoeCategories);
+
+        // If we have shoe categories, fetch products from those categories
+        if (shoeCategories.length > 0) {
+          // For now, we'll fetch all products and filter on frontend
+          // In the future, you can modify the API to accept multiple categories
+          const productsResponse = await productService.getProducts({ 
+            limit: 50,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+          });
+          
+          // Filter products that belong to shoe categories
+          const shoeProducts = productsResponse.data.products.filter(product =>
+            shoeCategories.some(cat => cat.id === product.category_id)
+          );
+          
+          setShoes(shoeProducts.length > 0 ? shoeProducts : fallbackShoes as any);
+        } else {
+          // If no specific shoe categories found, use fallback
+          setShoes(fallbackShoes as any);
+        }
+      } catch (err) {
+        console.error('Failed to fetch shoes:', err);
+        setError('Failed to load shoes');
+        setShoes(fallbackShoes as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShoesAndCategories();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -298,24 +356,42 @@ const Shoes = () => {
               </div>
 
               {/* Products Grid */}
-              <div
-                className={`grid gap-6 ${
+              {loading ? (
+                <div className={`grid gap-6 ${
                   viewMode === "grid"
                     ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                     : "grid-cols-1"
-                }`}
-              >
-                {shoes.map((shoe) => (
-                  <ProductCard key={shoe.id} {...shoe} />
-                ))}
-              </div>
+                }`}>
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-80 bg-muted animate-pulse rounded-lg"></div>
+                  ))}
+                </div>
+              ) : error && shoes.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Unable to load shoes. Please try again later.</p>
+                </div>
+              ) : (
+                <div
+                  className={`grid gap-6 ${
+                    viewMode === "grid"
+                      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                      : "grid-cols-1"
+                  }`}
+                >
+                  {shoes.map((shoe) => (
+                    <ProductCard key={shoe.id} {...shoe} />
+                  ))}
+                </div>
+              )}
 
               {/* Load More */}
-              <div className="text-center mt-12">
-                <Button variant="outline" size="lg">
-                  Load More Products
-                </Button>
-              </div>
+              {!loading && shoes.length > 0 && (
+                <div className="text-center mt-12">
+                  <Button variant="outline" size="lg">
+                    Load More Products
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

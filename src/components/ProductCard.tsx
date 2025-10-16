@@ -6,32 +6,70 @@ import { useState } from "react";
 
 interface ProductCardProps {
   id: number;
-  image: string;
   name: string;
+  description?: string;
   price: string;
+  stock_quantity: number;
+  brand: string;
+  colors?: string[];
+  sizes?: string[];
+  images?: Array<{
+    id: number;
+    image_url: string;
+    alt_text?: string;
+    is_primary: boolean;
+    sort_order: number;
+  }>;
+  category_name?: string;
+  category_id?: number;
+  is_featured: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Legacy props for backward compatibility
+  image?: string;
   originalPrice?: string;
-  category: string;
+  category?: string;
 }
 
-export default function ProductCard({
-  id,
-  image,
-  name,
-  price,
-  originalPrice,
-  category,
-}: ProductCardProps) {
+export default function ProductCard(props: ProductCardProps) {
   const { addItem } = useCart();
   const [isAdded, setIsAdded] = useState(false);
+
+  // Extract and transform props to handle both API and legacy data
+  const {
+    id,
+    name,
+    price,
+    brand,
+    images,
+    category_name,
+    image: legacyImage,
+    originalPrice,
+    category: legacyCategory
+  } = props;
+
+  // Get the primary image or first available image
+  const displayImage = legacyImage || 
+    (images && images.length > 0 
+      ? `http://localhost:5000${images.find(img => img.is_primary)?.image_url || images[0].image_url}`
+      : 'https://via.placeholder.com/400x400?text=No+Image'
+    );
+
+  // Use category_name from API or fallback to legacy category
+  const displayCategory = category_name || legacyCategory || brand;
+
+  // Format price if it's a number
+  const displayPrice = typeof price === 'string' ? price : `$${parseFloat(price).toFixed(2)}`;
 
   const handleAddToCart = () => {
     addItem({
       id,
       name,
-      price,
+      price: displayPrice,
       originalPrice,
-      image,
-      category,
+      image: displayImage,
+      category: displayCategory,
     });
 
     setIsAdded(true);
@@ -43,21 +81,21 @@ export default function ProductCard({
       <CardContent className="p-0">
         <div className="aspect-square overflow-hidden bg-muted">
           <img
-            src={image}
+            src={displayImage}
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         </div>
         <div className="p-4 space-y-3">
           <p className="text-xs text-muted uppercase tracking-wider">
-            {category}
+            {displayCategory}
           </p>
           <h3 className="font-semibold text-lg text-muted-foreground">
             {name}
           </h3>
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-2xl font-bold text-primary">{price}</span>
+              <span className="text-2xl font-bold text-primary">{displayPrice}</span>
               {originalPrice && (
                 <span className="text-sm text-muted-foreground line-through">
                   {originalPrice}
