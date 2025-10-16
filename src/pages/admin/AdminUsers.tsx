@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Edit, Trash2, Plus, Search, UserCheck, UserX, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -450,26 +451,26 @@ const AdminUsers: React.FC = () => {
             <div>
               <Label htmlFor="role">Role</Label>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="text-black">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="all" className="text-black">All Roles</SelectItem>
+                  <SelectItem value="customer" className="text-black">Customer</SelectItem>
+                  <SelectItem value="admin" className="text-black">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="text-black">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Inactive</SelectItem>
+                  <SelectItem value="all" className="text-black">All Status</SelectItem>
+                  <SelectItem value="true" className="text-black">Active</SelectItem>
+                  <SelectItem value="false" className="text-black">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -543,28 +544,60 @@ const AdminUsers: React.FC = () => {
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(user)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant={user.is_verified ? "destructive" : "default"}
-                            size="sm"
-                            onClick={() => handleToggleUserStatus(user)}
-                          >
-                            {user.is_verified ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => openDeleteDialog(user)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        <div className="flex space-x-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(user)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit user</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant={user.is_verified ? "destructive" : "default"}
+                                  size="sm"
+                                  onClick={() => handleToggleUserStatus(user)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  {user.is_verified ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{user.is_verified ? 'Deactivate user' : 'Activate user'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => openDeleteDialog(user)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Delete user</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -656,11 +689,11 @@ const AdminUsers: React.FC = () => {
             <div>
               <Label htmlFor="role">Role</Label>
               <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} disabled>
-                <SelectTrigger>
+                <SelectTrigger className="text-black">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin" className="text-black">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -684,14 +717,14 @@ const AdminUsers: React.FC = () => {
             <div>
               <Label htmlFor="gender">Gender (Optional)</Label>
               <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="text-black">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Not specified</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="" className="text-black">Not specified</SelectItem>
+                  <SelectItem value="male" className="text-black">Male</SelectItem>
+                  <SelectItem value="female" className="text-black">Female</SelectItem>
+                  <SelectItem value="other" className="text-black">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -758,12 +791,12 @@ const AdminUsers: React.FC = () => {
             <div>
               <Label htmlFor="edit_role">Role</Label>
               <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="text-black">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="customer" className="text-black">Customer</SelectItem>
+                  <SelectItem value="admin" className="text-black">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -787,14 +820,14 @@ const AdminUsers: React.FC = () => {
             <div>
               <Label htmlFor="edit_gender">Gender</Label>
               <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="text-black">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Not specified</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="" className="text-black">Not specified</SelectItem>
+                  <SelectItem value="male" className="text-black">Male</SelectItem>
+                  <SelectItem value="female" className="text-black">Female</SelectItem>
+                  <SelectItem value="other" className="text-black">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
