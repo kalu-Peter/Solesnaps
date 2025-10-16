@@ -109,18 +109,6 @@ const AdminDashboard = () => {
       revenue: "$13,924.44",
     },
     {
-      name: "Smart Watch Pro",
-      category: "Electronics",
-      sales: 89,
-      revenue: "$26,691.11",
-    },
-    {
-      name: "Premium Headphones",
-      category: "Electronics",
-      sales: 127,
-      revenue: "$20,319.73",
-    },
-    {
       name: "Urban Classic",
       category: "Shoes",
       sales: 203,

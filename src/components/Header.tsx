@@ -66,12 +66,6 @@ export default function Header() {
               Shoes
             </Link>
             <Link
-              to="/electronics"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Electronics
-            </Link>
-            <Link
               to="/new-arrivals"
               className="text-sm font-medium text-foreground hover:text-primary transition-colors"
             >

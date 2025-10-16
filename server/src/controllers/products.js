@@ -442,6 +442,56 @@ const getFeaturedProducts = async (req, res) => {
   }
 };
 
+// Get new arrivals (products created within last 15 days)
+const getNewArrivals = async (req, res) => {
+  try {
+    const { limit = 20 } = req.query;
+
+    const result = await query(
+      `SELECT 
+        p.id, p.name, p.description, p.price, p.stock_quantity,
+        p.brand, p.colors, p.sizes, p.gender, p.is_featured, p.is_active,
+        p.created_at, p.updated_at,
+        c.name as category_name, c.id as category_id,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.url,
+              'alt_text', pi.alt_text,
+              'is_primary', pi.is_primary,
+              'sort_order', pi.sort_order
+            ) ORDER BY pi.is_primary DESC, pi.sort_order ASC
+          ) FILTER (WHERE pi.id IS NOT NULL),
+          '[]'::json
+        ) as images
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id
+      WHERE p.is_active = true 
+        AND p.created_at >= NOW() - INTERVAL '15 days'
+      GROUP BY p.id, c.id, c.name
+      ORDER BY p.created_at DESC
+      LIMIT $1`,
+      [limit]
+    );
+
+    res.json({
+      message: 'New arrivals retrieved successfully',
+      data: {
+        products: result.rows,
+        count: result.rows.length
+      }
+    });
+  } catch (error) {
+    console.error('Get new arrivals error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve new arrivals',
+      message: 'An error occurred while retrieving new arrivals'
+    });
+  }
+};
+
 // Get product categories
 const getCategories = async (req, res) => {
   try {
@@ -473,5 +523,6 @@ module.exports = {
   deleteProduct,
   getProductReviews,
   getFeaturedProducts,
+  getNewArrivals,
   getCategories
 };

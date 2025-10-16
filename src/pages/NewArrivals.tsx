@@ -9,72 +9,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import shoe1 from "@/assets/shoe-1.jpg";
-import shoe2 from "@/assets/shoe-2.jpg";
-import headphones from "@/assets/headphones.jpg";
-import smartwatch from "@/assets/smartwatch.jpg";
+
 import { Sparkles, Clock, Grid, List, Star } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { productService, Product } from "@/services/productService";
 
 const NewArrivals = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [newProducts, setNewProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const newProducts = [
-    {
-      id: 301,
-      name: "Ultra Boost 2025",
-      price: "$199.99",
-      category: "Shoes",
-      image: shoe1,
-      isNew: true,
-      arrivalDate: "3 days ago",
-    },
-    {
-      id: 302,
-      name: "AirPods Pro Max",
-      price: "$449.99",
-      category: "Electronics",
-      image: headphones,
-      isNew: true,
-      arrivalDate: "1 week ago",
-    },
-    {
-      id: 303,
-      name: "Galaxy Watch Ultra",
-      price: "$389.99",
-      category: "Electronics",
-      image: smartwatch,
-      isNew: true,
-      arrivalDate: "2 days ago",
-    },
-    {
-      id: 304,
-      name: "Street Elite Pro",
-      price: "$169.99",
-      category: "Shoes",
-      image: shoe2,
-      isNew: true,
-      arrivalDate: "5 days ago",
-    },
-    {
-      id: 305,
-      name: "Studio Reference",
-      price: "$299.99",
-      category: "Electronics",
-      image: headphones,
-      isNew: true,
-      arrivalDate: "1 week ago",
-    },
-    {
-      id: 306,
-      name: "Performance Runner X",
-      price: "$189.99",
-      category: "Shoes",
-      image: shoe1,
-      isNew: true,
-      arrivalDate: "4 days ago",
-    },
-  ];
+  // Function to calculate arrival date display
+  const getArrivalDate = (createdAt: string) => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return "1 day ago";
+    if (diffDays <= 7) return `${diffDays} days ago`;
+    if (diffDays <= 14) return `${Math.ceil(diffDays / 7)} week${diffDays > 7 ? 's' : ''} ago`;
+    return "Recently added";
+  };
+
+  // Fetch new arrivals from API
+  useEffect(() => {
+    const fetchNewArrivals = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await productService.getNewArrivals(20);
+        setNewProducts(response.data.products);
+      } catch (err) {
+        console.error('Failed to fetch new arrivals:', err);
+        setError('Failed to load new arrivals. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNewArrivals();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -204,9 +180,6 @@ const NewArrivals = () => {
               Shoes
             </Button>
             <Button variant="outline" size="sm">
-              Electronics
-            </Button>
-            <Button variant="outline" size="sm">
               This Week
             </Button>
             <Button variant="outline" size="sm">
@@ -215,33 +188,63 @@ const NewArrivals = () => {
           </div>
 
           {/* Products Grid */}
-          <div
-            className={`grid gap-6 ${
-              viewMode === "grid"
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1"
-            }`}
-          >
-            {newProducts.map((product) => (
-              <div key={product.id} className="relative">
-                <ProductCard {...product} />
-                {/* New Badge Overlay */}
-                <div className="absolute top-3 left-3 z-10">
-                  <Badge className="bg-primary text-primary-foreground shadow-lg">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    NEW
-                  </Badge>
-                </div>
-                {/* Arrival Date */}
-                <div className="absolute top-3 right-3 z-10">
-                  <Badge variant="secondary" className="text-xs shadow-lg">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {product.arrivalDate}
-                  </Badge>
-                </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <Sparkles className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading new arrivals...</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : error ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="text-red-500 mb-4">⚠️</div>
+                <p className="text-muted-foreground">{error}</p>
+              </div>
+            </div>
+          ) : newProducts.length === 0 ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No New Arrivals</h3>
+                <p className="text-muted-foreground">No products have been added in the last 15 days.</p>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`grid gap-6 ${
+                viewMode === "grid"
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                  : "grid-cols-1"
+              }`}
+            >
+              {newProducts.map((product) => (
+                <div key={product.id} className="relative">
+                  <ProductCard 
+                    id={product.id}
+                    name={product.name}
+                    price={`$${parseFloat(product.price).toFixed(2)}`}
+                    category={product.category_name || "Shoes"}
+                    images={product.images}
+                  />
+                  {/* New Badge Overlay */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <Badge className="bg-primary text-primary-foreground shadow-lg">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      NEW
+                    </Badge>
+                  </div>
+                  {/* Arrival Date */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <Badge variant="secondary" className="text-xs shadow-lg">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {getArrivalDate(product.created_at)}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Newsletter Signup */}
           <div className="mt-16 text-center">

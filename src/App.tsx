@@ -8,7 +8,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Cart from "@/components/Cart";
 import Index from "./pages/Index";
 import Shoes from "./pages/Shoes";
-import Electronics from "./pages/Electronics";
 import NewArrivals from "./pages/NewArrivals";
 import Sale from "./pages/Sale";
 import NotFound from "./pages/NotFound";
@@ -34,7 +33,6 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/shoes" element={<Shoes />} />
-              <Route path="/electronics" element={<Electronics />} />
               <Route path="/new-arrivals" element={<NewArrivals />} />
               <Route path="/sale" element={<Sale />} />
               <Route path="/login" element={<LoginPage />} />

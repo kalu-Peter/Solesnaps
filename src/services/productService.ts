@@ -146,6 +146,29 @@ export const productService = {
     return response.json();
   },
 
+  // Get new arrivals (products from last 15 days)
+  async getNewArrivals(limit?: number): Promise<{ message: string; data: { products: Product[]; count: number } }> {
+    const queryParams = new URLSearchParams();
+    if (limit) {
+      queryParams.append('limit', limit.toString());
+    }
+
+    const url = `${API_BASE_URL}/products/new-arrivals${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch new arrivals: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
   // Get categories
   async getCategories(): Promise<{ message: string; data: { categories: Array<{ id: number; name: string; description?: string; image_url?: string }> } }> {
     const response = await fetch(`${API_BASE_URL}/products/categories`, {

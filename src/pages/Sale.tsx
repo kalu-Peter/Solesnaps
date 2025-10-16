@@ -64,26 +64,6 @@ const Sale = () => {
       stock: 15,
     },
     {
-      id: 402,
-      name: "Premium Headphones",
-      price: "$99.99",
-      originalPrice: "$159.99",
-      discount: "38%",
-      category: "Electronics",
-      image: headphones,
-      stock: 8,
-    },
-    {
-      id: 403,
-      name: "Smart Watch Pro",
-      price: "$199.99",
-      originalPrice: "$299.99",
-      discount: "33%",
-      category: "Electronics",
-      image: smartwatch,
-      stock: 12,
-    },
-    {
       id: 404,
       name: "Urban Classic",
       price: "$59.99",
@@ -92,16 +72,6 @@ const Sale = () => {
       category: "Shoes",
       image: shoe2,
       stock: 22,
-    },
-    {
-      id: 405,
-      name: "Gaming Headset",
-      price: "$79.99",
-      originalPrice: "$119.99",
-      discount: "33%",
-      category: "Electronics",
-      image: headphones,
-      stock: 6,
     },
     {
       id: 406,
@@ -132,7 +102,7 @@ const Sale = () => {
             </div>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
               Don't miss out on incredible deals! Limited time offers on premium
-              shoes and electronics.
+              shoes and footwear.
             </p>
 
             {/* Countdown Timer */}
@@ -259,9 +229,6 @@ const Sale = () => {
             </Button>
             <Button variant="outline" size="sm">
               Shoes
-            </Button>
-            <Button variant="outline" size="sm">
-              Electronics
             </Button>
             <Button variant="outline" size="sm">
               30%+ Off

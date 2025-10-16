@@ -11,6 +11,7 @@ const {
 // Public routes
 router.get('/', validateGetProducts, productsController.getProducts);
 router.get('/featured', productsController.getFeaturedProducts);
+router.get('/new-arrivals', productsController.getNewArrivals);
 router.get('/categories', productsController.getCategories);
 router.get('/:id', productsController.getProduct);
 router.get('/:id/reviews', productsController.getProductReviews);

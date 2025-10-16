@@ -20,8 +20,6 @@ const Index = () => {
   const fallbackProducts = [
     { id: 1, name: "Sport Runner Pro", price: "$89.99", category: "Shoes", image: shoe1 },
     { id: 2, name: "Urban Classic", price: "$79.99", category: "Shoes", image: shoe2 },
-    { id: 3, name: "Premium Headphones", price: "$159.99", category: "Electronics", image: headphones },
-    { id: 4, name: "Smart Watch Pro", price: "$299.99", category: "Electronics", image: smartwatch },
   ];
 
   useEffect(() => {
@@ -157,8 +155,8 @@ const Index = () => {
             </h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="group relative h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300">
+          <div className="flex justify-center">
+            <div className="group relative h-80 w-full max-w-2xl overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/90 to-accent/90" />
               <img src={shoe1} alt="Shoes" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
@@ -166,19 +164,6 @@ const Index = () => {
                 <p className="text-white/90 mb-6 text-center">Step in style</p>
                 <Button variant="secondary" size="lg" className="group-hover:scale-105 transition-transform">
                   Shop Shoes
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="group relative h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/90 to-primary/90" />
-              <img src={headphones} alt="Electronics" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50" />
-              <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
-                <h3 className="text-4xl font-bold mb-4">Electronics</h3>
-                <p className="text-white/90 mb-6 text-center">Tech that transforms</p>
-                <Button variant="secondary" size="lg" className="group-hover:scale-105 transition-transform">
-                  Shop Electronics
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -194,14 +179,13 @@ const Index = () => {
             <div>
               <h3 className="font-bold text-lg mb-4 text-foreground">TechStyle</h3>
               <p className="text-sm text-muted-foreground">
-                Your one-stop shop for premium shoes and electronics.
+                Your one-stop shop for premium shoes and footwear.
               </p>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-foreground">Shop</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#" className="hover:text-primary transition-colors">Shoes</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Electronics</a></li>
                 <li><a href="#" className="hover:text-primary transition-colors">New Arrivals</a></li>
                 <li><a href="#" className="hover:text-primary transition-colors">Sale</a></li>
               </ul>
