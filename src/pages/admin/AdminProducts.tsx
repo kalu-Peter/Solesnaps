@@ -691,12 +691,12 @@ const AdminProducts = () => {
                 value={selectedCategory}
                 onValueChange={setSelectedCategory}
               >
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[150px] text-black">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue />
-                </SelectTrigger>
+                </SelectTrigger >
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all" className="text-black">All Categories</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id.toString()}>
                       {category.name}
