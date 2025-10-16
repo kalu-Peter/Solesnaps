@@ -153,7 +153,7 @@ const AdminProducts = () => {
   // API Functions
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/products/categories', {
+      const response = await fetch('/api/products/categories', {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -200,7 +200,7 @@ const AdminProducts = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`http://localhost:5000/api/products?${params}`, {
+      const response = await fetch(`/api/products?${params}`, {
         headers: headers,
       });
 
@@ -245,7 +245,7 @@ const AdminProducts = () => {
       console.log('Creating product with data:', productData);
 
       // Create product first
-      const response = await fetch('http://localhost:5000/api/products', {
+      const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

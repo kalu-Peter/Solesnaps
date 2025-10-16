@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 import { fetchDeliveryLocations } from "@/lib/delivery";
+import { fetchProductPrices } from "@/lib/products";
 import { DeliveryLocation } from "@/types/cart";
 import CartItem from "./CartItem";
 import { ShoppingBag, ShoppingCart, Trash2, CreditCard } from "lucide-react";
@@ -31,6 +32,8 @@ export default function Cart() {
   const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [currentPrices, setCurrentPrices] = useState<Record<number, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
 
   useEffect(() => {
     if (isOpen && deliveryLocations.length === 0 && !loadingLocations) {
@@ -48,6 +51,42 @@ export default function Cart() {
         .finally(() => setLoadingLocations(false));
     }
   }, [isOpen, deliveryLocations.length, loadingLocations]);
+
+  // Fetch current prices for cart items
+  useEffect(() => {
+    if (items.length > 0 && Object.keys(currentPrices).length === 0 && !loadingPrices) {
+      setLoadingPrices(true);
+      const productIds = items.map(item => item.id);
+      
+      fetchProductPrices(productIds)
+        .then((prices) => {
+          console.log("Fetched current prices:", prices);
+          setCurrentPrices(prices);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch current prices:", error);
+          // Fallback to cart prices if API fails
+          const fallbackPrices: Record<number, number> = {};
+          items.forEach(item => {
+            fallbackPrices[item.id] = item.price;
+          });
+          setCurrentPrices(fallbackPrices);
+        })
+        .finally(() => setLoadingPrices(false));
+    } else if (items.length === 0) {
+      setCurrentPrices({});
+    }
+  }, [items.length]); // Only depend on items.length to avoid infinite loops
+
+  // Calculate totals using current prices
+  const calculateTotalPrice = () => {
+    return items.reduce((total, item) => {
+      const currentPrice = currentPrices[item.id] || item.price;
+      return total + (currentPrice * item.quantity);
+    }, 0);
+  };
+
+  const calculatedTotalPrice = calculateTotalPrice();
 
   const isEmpty = items.length === 0;
 
@@ -87,6 +126,8 @@ export default function Cart() {
                 <CartItem
                   key={`${item.id}-${item.size || "default"}`}
                   item={item}
+                  currentPrice={currentPrices[item.id]}
+                  loadingPrice={loadingPrices}
                 />
               ))}
             </div>
@@ -144,7 +185,11 @@ export default function Cart() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="text-foreground">
-                    Ksh {totalPrice.toFixed(2)}
+                    {loadingPrices ? (
+                      <span className="text-muted-foreground">Loading...</span>
+                    ) : (
+                      `Ksh ${calculatedTotalPrice.toFixed(2)}`
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -168,9 +213,15 @@ export default function Cart() {
                   Total
                 </span>
                 <span className="text-lg font-bold text-primary">
-                  {selectedDeliveryLocation
-                    ? `Ksh ${(totalPrice + Number(shippingCost || 0)).toFixed(2)}`
-                    : "--"}
+                  {selectedDeliveryLocation ? (
+                    loadingPrices ? (
+                      <span className="text-muted-foreground">Loading...</span>
+                    ) : (
+                      `Ksh ${(calculatedTotalPrice + Number(shippingCost || 0)).toFixed(2)}`
+                    )
+                  ) : (
+                    "--"
+                  )}
                 </span>
               </div>
 

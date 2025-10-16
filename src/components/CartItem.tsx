@@ -5,17 +5,23 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 
 interface CartItemProps {
   item: CartItemType;
+  currentPrice?: number;
+  loadingPrice?: boolean;
 }
 
-export default function CartItem({ item }: CartItemProps) {
+export default function CartItem({ item, currentPrice, loadingPrice }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
 
   const handleQuantityChange = (newQuantity: number) => {
     updateQuantity(item.id, newQuantity);
   };
 
-  const price = item.price;
-  const subtotal = price * item.quantity;
+  // Use current price from API if available, otherwise fallback to cart price
+  const displayPrice = currentPrice !== undefined ? currentPrice : item.price;
+  const subtotal = displayPrice * item.quantity;
+  
+  // Check if price has changed from what's stored in cart
+  const priceChanged = currentPrice !== undefined && currentPrice !== item.price;
 
   return (
     <div className="flex gap-4 py-4 border-b border-border last:border-b-0">
@@ -54,11 +60,25 @@ export default function CartItem({ item }: CartItemProps) {
         {/* Price */}
         <div className="flex items-center gap-2 mt-2">
           <span className="text-sm font-semibold text-foreground">
-            Ksh {subtotal.toFixed(2)}
+            {loadingPrice ? (
+              <span className="text-muted-foreground">Loading...</span>
+            ) : (
+              `Ksh ${subtotal.toFixed(2)}`
+            )}
           </span>
+          {priceChanged && !loadingPrice && (
+            <span className="text-xs text-muted-foreground line-through">
+              Ksh {(item.price * item.quantity).toFixed(2)}
+            </span>
+          )}
           {item.originalPrice && (
             <span className="text-xs text-muted-foreground line-through">
               Ksh {item.originalPrice.toFixed(2)}
+            </span>
+          )}
+          {priceChanged && !loadingPrice && (
+            <span className="text-xs text-green-600 dark:text-green-400">
+              Price updated
             </span>
           )}
         </div>
