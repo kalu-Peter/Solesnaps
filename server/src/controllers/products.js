@@ -87,7 +87,7 @@ const getProducts = async (req, res) => {
     const productsQuery = `
       SELECT 
         p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.is_featured, p.is_active,
+        p.brand, p.colors, p.sizes, p.gender, p.is_featured, p.is_active,
         p.created_at, p.updated_at,
         c.name as category_name, c.id as category_id,
         COALESCE(
@@ -167,7 +167,7 @@ const getProduct = async (req, res) => {
     const productQuery = `
       SELECT 
         p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.is_featured, p.is_active, 
+        p.brand, p.colors, p.sizes, p.gender, p.is_featured, p.is_active, 
         p.created_at, p.updated_at,
         c.name as category_name, c.id as category_id,
         COALESCE(
@@ -225,6 +225,7 @@ const createProduct = async (req, res) => {
       brand,
       colors,
       sizes,
+      gender = 'unisex',
       is_featured = false
     } = req.body;
 
@@ -234,12 +235,12 @@ const createProduct = async (req, res) => {
     const result = await query(
       `INSERT INTO products (
         name, slug, description, price, stock_quantity, category_id, brand,
-        colors, sizes, is_featured, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        colors, sizes, gender, is_featured, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         name, slug, description, price, stock_quantity, category_id, brand,
-        JSON.stringify(colors || []), JSON.stringify(sizes || []),
+        JSON.stringify(colors || []), JSON.stringify(sizes || []), gender,
         is_featured, true
       ]
     );
@@ -401,7 +402,7 @@ const getFeaturedProducts = async (req, res) => {
     const result = await query(
       `SELECT 
         p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.is_featured, p.is_active,
+        p.brand, p.colors, p.sizes, p.gender, p.is_featured, p.is_active,
         p.created_at, p.updated_at,
         c.name as category_name, c.id as category_id,
         COALESCE(

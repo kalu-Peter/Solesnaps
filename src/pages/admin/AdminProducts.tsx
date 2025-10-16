@@ -102,6 +102,7 @@ interface ProductFormData {
   sizes: string[];
   images: string[];
   is_featured: boolean;
+  gender?: string;
 }
 
 const AdminProducts = () => {
@@ -130,6 +131,7 @@ const AdminProducts = () => {
     sizes: [],
     images: [],
     is_featured: false,
+    gender: "none",
   });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -224,6 +226,7 @@ const AdminProducts = () => {
         sizes: formData.sizes,
         images: [], // Required by validation - images will be uploaded separately
         is_featured: formData.is_featured,
+        gender: formData.gender === "none" ? undefined : formData.gender, // Only include valid gender values
       };
 
       console.log('Creating product with data:', productData);
@@ -300,6 +303,7 @@ const AdminProducts = () => {
       sizes: [],
       images: [],
       is_featured: false,
+      gender: "none",
     });
     setSelectedFiles([]);
     setImagePreviews([]);
@@ -534,6 +538,24 @@ const AdminProducts = () => {
                 </div>
                 
                 <div className="grid gap-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <Select 
+                    value={formData.gender} 
+                    onValueChange={(value) => setFormData({...formData, gender: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="unisex">Unisex</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid gap-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
@@ -724,12 +746,12 @@ const AdminProducts = () => {
                             src={
                               Array.isArray(product.images) && product.images.length > 0
                                 ? `http://localhost:5000${product.images[0].image_url}`
-                                : "/api/placeholder/80/80"
+                                : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+"
                             }
                             alt={product.name}
                             className="h-10 w-10 rounded object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/api/placeholder/80/80";
+                              (e.target as HTMLImageElement).src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+"; 
                             }}
                           />
                           <div>

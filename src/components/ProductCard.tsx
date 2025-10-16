@@ -53,7 +53,7 @@ export default function ProductCard(props: ProductCardProps) {
   const displayImage = legacyImage || 
     (images && images.length > 0 
       ? `http://localhost:5000${images.find(img => img.is_primary)?.image_url || images[0].image_url}`
-      : 'https://via.placeholder.com/400x400?text=No+Image'
+      : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='
     );
 
   // Use category_name from API or fallback to legacy category

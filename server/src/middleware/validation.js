@@ -157,6 +157,11 @@ const validateCreateProduct = [
     .isBoolean()
     .withMessage('is_featured must be true or false'),
     
+  body('gender')
+    .optional()
+    .isIn(['male', 'female', 'unisex'])
+    .withMessage('Gender must be male, female, or unisex'),
+    
   handleValidationErrors
 ];
 
@@ -218,6 +223,11 @@ const validateUpdateProduct = [
     .optional()
     .isBoolean()
     .withMessage('is_active must be true or false'),
+    
+  body('gender')
+    .optional()
+    .isIn(['male', 'female', 'unisex'])
+    .withMessage('Gender must be male, female, or unisex'),
     
   handleValidationErrors
 ];
