@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
   CardContent,
@@ -49,98 +50,71 @@ import {
   Truck,
   CheckCircle,
   XCircle,
+  Loader2,
 } from "lucide-react";
+import {
+  Order,
+  OrderItem,
+  fetchOrders,
+  fetchOrderById,
+  updateOrderStatus as updateOrderStatusAPI,
+} from "@/lib/orders";
 
 const AdminOrders = () => {
+  const { token, isAuthenticated } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    total_pages: 1,
+    total_orders: 0,
+    per_page: 10,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loadingOrderDetail, setLoadingOrderDetail] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
 
-  // Mock order data
-  const orders = [
-    {
-      id: "#3001",
-      customer: {
-        name: "Alice Johnson",
-        email: "alice@example.com",
-        phone: "+1 (555) 123-4567",
-        address: "123 Main St, New York, NY 10001",
-      },
-      items: [
-        { name: "Sport Runner Pro", quantity: 1, price: 89.99 },
-        { name: "Premium Headphones", quantity: 1, price: 159.99 },
-      ],
-      total: 249.98,
-      status: "completed",
-      paymentStatus: "paid",
-      date: "2025-10-13",
-      tracking: "TR123456789",
-    },
-    {
-      id: "#3002",
-      customer: {
-        name: "Bob Smith",
-        email: "bob@example.com",
-        phone: "+1 (555) 234-5678",
-        address: "456 Oak Ave, Los Angeles, CA 90210",
-      },
-      items: [{ name: "Urban Classic", quantity: 2, price: 79.99 }],
-      total: 159.98,
-      status: "processing",
-      paymentStatus: "paid",
-      date: "2025-10-13",
-      tracking: null,
-    },
-    {
-      id: "#3003",
-      customer: {
-        name: "Carol Davis",
-        email: "carol@example.com",
-        phone: "+1 (555) 345-6789",
-        address: "789 Pine St, Chicago, IL 60601",
-      },
-      items: [{ name: "Smart Watch Pro", quantity: 1, price: 299.99 }],
-      total: 299.99,
-      status: "pending",
-      paymentStatus: "pending",
-      date: "2025-10-12",
-      tracking: null,
-    },
-    {
-      id: "#3004",
-      customer: {
-        name: "David Wilson",
-        email: "david@example.com",
-        phone: "+1 (555) 456-7890",
-        address: "321 Elm St, Houston, TX 77001",
-      },
-      items: [
-        { name: "Business Formal", quantity: 1, price: 129.99 },
-        { name: "Wireless Speaker", quantity: 1, price: 89.99 },
-      ],
-      total: 219.98,
-      status: "shipped",
-      paymentStatus: "paid",
-      date: "2025-10-12",
-      tracking: "TR987654321",
-    },
-    {
-      id: "#3005",
-      customer: {
-        name: "Eva Brown",
-        email: "eva@example.com",
-        phone: "+1 (555) 567-8901",
-        address: "654 Maple Ave, Miami, FL 33101",
-      },
-      items: [{ name: "Sport Runner Pro", quantity: 1, price: 89.99 }],
-      total: 89.99,
-      status: "cancelled",
-      paymentStatus: "refunded",
-      date: "2025-10-11",
-      tracking: null,
-    },
-  ];
+  // Fetch orders from API
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!token) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchOrders(token, {
+          page: currentPage,
+          limit: 10,
+          status: selectedStatus !== "all" ? selectedStatus : undefined,
+        });
+        
+        setOrders(response.data.orders);
+        setPagination(response.data.pagination);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch orders");
+        console.error("Error fetching orders:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, [token, currentPage, selectedStatus]);
+
+  // Filter orders locally for search
+  const filteredOrders = orders.filter((order) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      order.order_number?.toLowerCase().includes(searchLower) ||
+      order.user_name?.toLowerCase().includes(searchLower) ||
+      order.user_email?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const statusOptions = [
     "all",
@@ -150,16 +124,6 @@ const AdminOrders = () => {
     "completed",
     "cancelled",
   ];
-
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      selectedStatus === "all" || order.status === selectedStatus;
-    return matchesSearch && matchesStatus;
-  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -206,15 +170,84 @@ const AdminOrders = () => {
     }
   };
 
-  const handleViewOrder = (order) => {
-    setSelectedOrder(order);
-    setIsOrderDetailOpen(true);
+  const handleViewOrder = async (order: Order) => {
+    if (!token) return;
+    
+    setLoadingOrderDetail(true);
+    try {
+      const response = await fetchOrderById(token, order.id);
+      setSelectedOrder(response.data.order);
+      setIsOrderDetailOpen(true);
+    } catch (err) {
+      console.error("Error fetching order details:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch order details");
+    } finally {
+      setLoadingOrderDetail(false);
+    }
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: string) => {
-    // In a real app, this would make an API call
-    console.log(`Updating order ${orderId} to status: ${newStatus}`);
+  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+    if (!token) return;
+    
+    setUpdatingStatus(orderId);
+    try {
+      await updateOrderStatusAPI(token, orderId, newStatus);
+      
+      // Refresh orders list
+      const response = await fetchOrders(token, {
+        page: currentPage,
+        limit: 10,
+        status: selectedStatus !== "all" ? selectedStatus : undefined,
+      });
+      
+      setOrders(response.data.orders);
+      setPagination(response.data.pagination);
+    } catch (err) {
+      console.error("Error updating order status:", err);
+      setError(err instanceof Error ? err.message : "Failed to update order status");
+    } finally {
+      setUpdatingStatus(null);
+    }
   };
+
+  const handleStatusFilterChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-muted-foreground">Please log in to access this page.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading orders...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-destructive mb-2">Error loading orders</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -235,7 +268,7 @@ const AdminOrders = () => {
                 <p className="text-sm font-medium text-muted-foreground">
                   Total Orders
                 </p>
-                <p className="text-2xl font-bold">{orders.length}</p>
+                <p className="text-2xl font-bold">{pagination.total_orders}</p>
               </div>
               <Package className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -310,7 +343,7 @@ const AdminOrders = () => {
                   className="pl-9"
                 />
               </div>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <Select value={selectedStatus} onValueChange={handleStatusFilterChange}>
                 <SelectTrigger className="w-[150px]">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue />
@@ -351,23 +384,27 @@ const AdminOrders = () => {
             <TableBody>
               {filteredOrders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell>
+                  <TableCell className="font-medium">
+                    {order.order_number || `#${order.id}`}
+                  </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{order.customer.name}</div>
+                      <div className="font-medium">
+                        {order.user_name || "Unknown User"}
+                      </div>
                       <div className="text-sm text-muted-foreground">
-                        {order.customer.email}
+                        {order.user_email || "No email"}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {order.items.length} item
-                      {order.items.length !== 1 ? "s" : ""}
+                      {order.item_count} item
+                      {order.item_count !== 1 ? "s" : ""}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    ${order.total.toFixed(2)}
+                    Ksh {parseFloat(order.total_amount?.toString() || "0").toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -383,25 +420,34 @@ const AdminOrders = () => {
                   <TableCell>
                     <Badge
                       variant="secondary"
-                      className={getPaymentStatusColor(order.paymentStatus)}
+                      className={getPaymentStatusColor(order.payment_status || "pending")}
                     >
-                      {order.paymentStatus}
+                      {order.payment_status || "pending"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(order.date).toLocaleDateString()}
+                    {new Date(order.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0"
+                          disabled={updatingStatus === order.id}
+                        >
+                          {updatingStatus === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
                           onClick={() => handleViewOrder(order)}
+                          disabled={loadingOrderDetail}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
@@ -409,23 +455,22 @@ const AdminOrders = () => {
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Update Status</DropdownMenuLabel>
                         <DropdownMenuItem
-                          onClick={() =>
-                            updateOrderStatus(order.id, "processing")
-                          }
+                          onClick={() => handleUpdateOrderStatus(order.id, "processing")}
+                          disabled={updatingStatus === order.id}
                         >
                           <Package className="mr-2 h-4 w-4" />
                           Mark Processing
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => updateOrderStatus(order.id, "shipped")}
+                          onClick={() => handleUpdateOrderStatus(order.id, "shipped")}
+                          disabled={updatingStatus === order.id}
                         >
                           <Truck className="mr-2 h-4 w-4" />
                           Mark Shipped
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() =>
-                            updateOrderStatus(order.id, "completed")
-                          }
+                          onClick={() => handleUpdateOrderStatus(order.id, "completed")}
+                          disabled={updatingStatus === order.id}
                         >
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Mark Completed
@@ -447,7 +492,7 @@ const AdminOrders = () => {
             <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>
               {selectedOrder
-                ? `Order ${selectedOrder.id}`
+                ? `Order ${selectedOrder.order_number || `#${selectedOrder.id}`}`
                 : "Order information"}
             </DialogDescription>
           </DialogHeader>
@@ -457,15 +502,14 @@ const AdminOrders = () => {
                 <div>
                   <h4 className="font-medium mb-2">Customer Information</h4>
                   <div className="space-y-1 text-sm">
-                    <p className="font-medium">{selectedOrder.customer.name}</p>
-                    <p className="text-muted-foreground">
-                      {selectedOrder.customer.email}
+                    <p className="font-medium">
+                      {selectedOrder.user_name || "Unknown User"}
                     </p>
                     <p className="text-muted-foreground">
-                      {selectedOrder.customer.phone}
+                      {selectedOrder.user_email || "No email"}
                     </p>
                     <p className="text-muted-foreground">
-                      {selectedOrder.customer.address}
+                      {selectedOrder.user_phone || "No phone"}
                     </p>
                   </div>
                 </div>
@@ -482,26 +526,32 @@ const AdminOrders = () => {
                       <span>Payment:</span>
                       <Badge
                         className={getPaymentStatusColor(
-                          selectedOrder.paymentStatus
+                          selectedOrder.payment_status || "pending"
                         )}
                       >
-                        {selectedOrder.paymentStatus}
+                        {selectedOrder.payment_status || "pending"}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span>Date:</span>
                       <span>
-                        {new Date(selectedOrder.date).toLocaleDateString()}
+                        {new Date(selectedOrder.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    {selectedOrder.tracking && (
+                    {selectedOrder.tracking_number && (
                       <div className="flex justify-between">
                         <span>Tracking:</span>
                         <span className="font-mono">
-                          {selectedOrder.tracking}
+                          {selectedOrder.tracking_number}
                         </span>
                       </div>
                     )}
+                    <div className="flex justify-between">
+                      <span>Payment Method:</span>
+                      <span className="capitalize">
+                        {selectedOrder.payment_method || "N/A"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -509,25 +559,44 @@ const AdminOrders = () => {
               <div>
                 <h4 className="font-medium mb-3">Order Items</h4>
                 <div className="space-y-2">
-                  {selectedOrder.items.map((item, index) => (
+                  {selectedOrder.items?.map((item, index) => (
                     <div
                       key={index}
                       className="flex justify-between items-center py-2 border-b"
                     >
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">{item.product_name}</p>
                         <p className="text-sm text-muted-foreground">
                           Quantity: {item.quantity}
+                          {item.size && ` • Size: ${item.size}`}
+                          {item.color && ` • Color: ${item.color}`}
                         </p>
                       </div>
                       <p className="font-medium">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        Ksh {(parseFloat(item.price?.toString() || "0") * item.quantity).toFixed(2)}
                       </p>
                     </div>
-                  ))}
-                  <div className="flex justify-between items-center pt-2 font-medium">
+                  )) || (
+                    <p className="text-muted-foreground">No items found</p>
+                  )}
+                  
+                  {selectedOrder.subtotal_amount && (
+                    <div className="flex justify-between items-center pt-2 text-sm">
+                      <span>Subtotal:</span>
+                      <span>Ksh {parseFloat(selectedOrder.subtotal_amount?.toString() || "0").toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {selectedOrder.shipping_amount && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Shipping:</span>
+                      <span>Ksh {parseFloat(selectedOrder.shipping_amount?.toString() || "0").toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center pt-2 font-medium border-t">
                     <span>Total:</span>
-                    <span>${selectedOrder.total.toFixed(2)}</span>
+                    <span>Ksh {parseFloat(selectedOrder.total_amount?.toString() || "0").toFixed(2)}</span>
                   </div>
                 </div>
               </div>

@@ -303,11 +303,14 @@ const getOrder = async (req, res) => {
 
     const orderQuery = `
       SELECT 
-        o.id, o.user_id, o.total_amount, o.status, o.shipping_address,
-        o.payment_method, o.notes, o.created_at, o.updated_at,
-        u.name as user_name, u.email as user_email
+        o.id, o.user_id, o.order_number, o.total_amount, o.subtotal_amount, 
+        o.shipping_amount, o.status, o.payment_method, o.payment_status,
+        o.shipping_address, o.billing_address, o.notes, o.created_at, o.updated_at,
+        o.delivery_location_id, o.tracking_number,
+        CONCAT(u.first_name, ' ', u.last_name) as user_name, u.email as user_email,
+        u.phone as user_phone
       FROM orders o
-      JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.user_id = u.id
       ${whereClause}
     `;
 
@@ -522,14 +525,16 @@ const getAllOrders = async (req, res) => {
 
     const ordersQuery = `
       SELECT 
-        o.id, o.user_id, o.total_amount, o.status, o.created_at, o.updated_at,
-        u.name as user_name, u.email as user_email,
+        o.id, o.user_id, o.order_number, o.total_amount, o.subtotal_amount, o.shipping_amount,
+        o.status, o.payment_method, o.payment_status, o.created_at, o.updated_at,
+        o.delivery_location_id, o.tracking_number,
+        CONCAT(u.first_name, ' ', u.last_name) as user_name, u.email as user_email,
         COUNT(oi.id) as item_count
       FROM orders o
-      JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.user_id = u.id
       LEFT JOIN order_items oi ON o.id = oi.order_id
       ${whereClause}
-      GROUP BY o.id, u.name, u.email
+      GROUP BY o.id, u.first_name, u.last_name, u.email
       ORDER BY o.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
@@ -542,7 +547,7 @@ const getAllOrders = async (req, res) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM orders o
-      JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.user_id = u.id
       ${whereClause}
     `;
 
