@@ -660,7 +660,7 @@ const AdminUsers: React.FC = () => {
               </div>
               <div className="space-x-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
@@ -668,7 +668,7 @@ const AdminUsers: React.FC = () => {
                   Previous
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
