@@ -9,12 +9,45 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
+import { useEffect, useState } from "react";
+import { fetchDeliveryLocations } from "@/lib/delivery";
+import { DeliveryLocation } from "@/types/cart";
 import CartItem from "./CartItem";
 import { ShoppingBag, ShoppingCart, Trash2, CreditCard } from "lucide-react";
 
 export default function Cart() {
-  const { items, totalItems, totalPrice, isOpen, closeCart, clearCart } =
-    useCart();
+  const {
+    items,
+    totalItems,
+    totalPrice,
+    isOpen,
+    closeCart,
+    clearCart,
+    selectedDeliveryLocation,
+    setDeliveryLocation,
+    shippingCost,
+  } = useCart();
+
+  const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && deliveryLocations.length === 0 && !loadingLocations) {
+      setLoadingLocations(true);
+      setLocationError(null);
+      fetchDeliveryLocations()
+        .then((locations) => {
+          console.log("Fetched delivery locations:", locations);
+          setDeliveryLocations(locations);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch delivery locations:", error);
+          setLocationError(`Failed to load delivery locations: ${error.message}`);
+        })
+        .finally(() => setLoadingLocations(false));
+    }
+  }, [isOpen, deliveryLocations.length, loadingLocations]);
 
   const isEmpty = items.length === 0;
 
@@ -60,6 +93,37 @@ export default function Cart() {
 
             {/* Cart Summary */}
             <div className="border-t border-border pt-4 space-y-4">
+              {/* Delivery Location Selector */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Delivery Location</label>
+                {loadingLocations ? (
+                  <div className="text-xs text-muted-foreground">Loading locations...</div>
+                ) : locationError ? (
+                  <div className="text-xs text-destructive">{locationError}</div>
+                ) : (
+                  <select
+                    className="w-full border rounded-md px-2 py-1 text-sm"
+                    value={selectedDeliveryLocation?.id || ""}
+                    onChange={e => {
+                      const loc = deliveryLocations.find(l => l.id === Number(e.target.value));
+                      if (loc) setDeliveryLocation(loc);
+                    }}
+                  >
+                    <option value="">Select a location...</option>
+                    {deliveryLocations.map(loc => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.city} ({loc.status === "active" ? "Active" : "Inactive"})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {selectedDeliveryLocation && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    <div>Pickup: {selectedDeliveryLocation.pick_up_location}</div>
+                    <div>Phone: {selectedDeliveryLocation.pick_up_phone}</div>
+                  </div>
+                )}
+              </div>
               {/* Clear Cart Button */}
               <div className="flex justify-between items-center">
                 <Button
@@ -80,19 +144,19 @@ export default function Cart() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="text-foreground">
-                    ${totalPrice.toFixed(2)}
+                    Ksh {totalPrice.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
                   <span className="text-foreground">
-                    {totalPrice > 50 ? "Free" : "$5.99"}
+                    {selectedDeliveryLocation
+                      ? `Ksh ${shippingCost.toFixed(2)}`
+                      : "--"}
                   </span>
                 </div>
-                {totalPrice > 50 && (
-                  <div className="text-xs text-green-600 dark:text-green-400">
-                    🎉 You qualified for free shipping!
-                  </div>
+                {selectedDeliveryLocation && selectedDeliveryLocation.status !== "active" && (
+                  <div className="text-xs text-destructive">This location is not active for delivery.</div>
                 )}
               </div>
 
@@ -104,12 +168,14 @@ export default function Cart() {
                   Total
                 </span>
                 <span className="text-lg font-bold text-primary">
-                  ${(totalPrice + (totalPrice > 50 ? 0 : 5.99)).toFixed(2)}
+                  {selectedDeliveryLocation
+                    ? `Ksh ${(totalPrice + shippingCost).toFixed(2)}`
+                    : "--"}
                 </span>
               </div>
 
               {/* Checkout Button */}
-              <Button className="w-full" size="lg">
+              <Button className="w-full" size="lg" disabled={!selectedDeliveryLocation || selectedDeliveryLocation.status !== "active"}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 Checkout
               </Button>
@@ -119,22 +185,7 @@ export default function Cart() {
                 Continue Shopping
               </Button>
 
-              {/* Free Shipping Progress */}
-              {totalPrice < 50 && (
-                <div className="text-center">
-                  <div className="text-xs text-muted-foreground mb-2">
-                    Add ${(50 - totalPrice).toFixed(2)} more for free shipping
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min((totalPrice / 50) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
+              {/* No free shipping progress bar, since shipping is based on location */}
             </div>
           </>
         )}

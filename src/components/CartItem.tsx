@@ -14,7 +14,7 @@ export default function CartItem({ item }: CartItemProps) {
     updateQuantity(item.id, newQuantity);
   };
 
-  const price = parseFloat(item.price.replace("$", ""));
+  const price = item.price;
   const subtotal = price * item.quantity;
 
   return (
@@ -54,11 +54,11 @@ export default function CartItem({ item }: CartItemProps) {
         {/* Price */}
         <div className="flex items-center gap-2 mt-2">
           <span className="text-sm font-semibold text-foreground">
-            ${subtotal.toFixed(2)}
+            Ksh {subtotal.toFixed(2)}
           </span>
           {item.originalPrice && (
             <span className="text-xs text-muted-foreground line-through">
-              {item.originalPrice}
+              Ksh {item.originalPrice.toFixed(2)}
             </span>
           )}
         </div>

@@ -68,11 +68,15 @@ export default function ProductCard(props: ProductCardProps) {
   const displayPrice = formatPrice(price);
 
   const handleAddToCart = () => {
+    // Parse the numeric price for the cart
+    const numericPrice = typeof price === 'string' ? parseFloat(price.replace(/[^0-9.]/g, '')) : price;
+    const numericOriginalPrice = originalPrice ? parseFloat(originalPrice.replace(/[^0-9.]/g, '')) : undefined;
+    
     addItem({
       id,
       name,
-      price: displayPrice,
-      originalPrice,
+      price: numericPrice,
+      originalPrice: numericOriginalPrice,
       image: displayImage,
       category: displayCategory,
     });

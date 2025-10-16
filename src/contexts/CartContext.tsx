@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import { CartItem, CartContextType } from "@/types/cart";
+import { CartItem, CartContextType, DeliveryLocation } from "@/types/cart";
 
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
+  selectedDeliveryLocation?: DeliveryLocation;
+  shippingCost: number;
 }
 
 type CartAction =
@@ -13,10 +15,17 @@ type CartAction =
   | { type: "CLEAR_CART" }
   | { type: "OPEN_CART" }
   | { type: "CLOSE_CART" }
-  | { type: "LOAD_CART"; payload: CartItem[] };
+  | { type: "LOAD_CART"; payload: CartItem[] }
+  | { type: "SET_DELIVERY_LOCATION"; payload: DeliveryLocation };
 
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
+    case "SET_DELIVERY_LOCATION":
+      return {
+        ...state,
+        selectedDeliveryLocation: action.payload,
+        shippingCost: action.payload.shopping_amount,
+      };
     case "ADD_ITEM": {
       const existingItem = state.items.find(
         (item) => item.id === action.payload.id
@@ -110,6 +119,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, {
     items: [],
     isOpen: false,
+    selectedDeliveryLocation: undefined,
+    shippingCost: 0,
   });
 
   // Load cart from localStorage on mount
@@ -132,6 +143,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const addItem = (item: Omit<CartItem, "quantity">) => {
     dispatch({ type: "ADD_ITEM", payload: item });
+  };
+
+  const setDeliveryLocation = (location: DeliveryLocation) => {
+    dispatch({ type: "SET_DELIVERY_LOCATION", payload: location });
   };
 
   const removeItem = (id: number) => {
@@ -160,8 +175,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   );
 
   const totalPrice = state.items.reduce((total, item) => {
-    const price = parseFloat(item.price.replace("$", ""));
-    return total + price * item.quantity;
+    return total + item.price * item.quantity;
   }, 0);
 
   const value: CartContextType = {
@@ -169,6 +183,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     totalItems,
     totalPrice,
     isOpen: state.isOpen,
+    selectedDeliveryLocation: state.selectedDeliveryLocation,
+    setDeliveryLocation,
+    shippingCost: state.shippingCost,
     addItem,
     removeItem,
     updateQuantity,
