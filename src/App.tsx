@@ -20,6 +20,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminUsers from "./pages/admin/AdminUsers";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
+import MyOrders from "./pages/MyOrders";
 import ResponsiveTest from "./pages/ResponsiveTest";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -46,6 +47,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-orders"
+                element={
+                  <ProtectedRoute>
+                    <MyOrders />
                   </ProtectedRoute>
                 }
               />
