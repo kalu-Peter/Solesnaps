@@ -1,4 +1,5 @@
 const { query, transaction } = require('../config/database');
+const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Helper function to generate slug from product name
 const generateSlug = (name) => {
@@ -83,6 +84,71 @@ const getProducts = async (req, res) => {
 
     const whereClause = whereConditions.join(' AND ');
 
+    // If Supabase configured, use it
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      try {
+        const pageInt = parseInt(page, 10);
+        const limitInt = parseInt(limit, 10);
+        const from = (pageInt - 1) * limitInt;
+        const to = from + limitInt - 1;
+
+        // Build select with related category and images
+        let qb = supabaseAdmin
+          .from('products')
+          .select('id, name, description, price, stock_quantity, brand, colors, sizes, gender, is_featured, is_active, created_at, updated_at, category:categories(id,name), product_images(id,url,alt_text,is_primary,sort_order)', { count: 'exact' })
+          .order(sortColumn, { ascending: sortDirection === 'asc' });
+
+        // Apply filters where possible
+        if (brand) qb = qb.ilike('brand', `%${brand}%`);
+        if (min_price) qb = qb.gte('price', parseFloat(min_price));
+        if (max_price) qb = qb.lte('price', parseFloat(max_price));
+        if (search) qb = qb.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+        if (color) qb = qb.contains('colors', [color]);
+        if (size) qb = qb.contains('sizes', [size]);
+
+        // Category filter by name: find category id first
+        if (category) {
+          const { data: catData, error: catErr } = await supabaseAdmin.from('categories').select('id').ilike('name', `%${category}%`).limit(1).single();
+          if (!catErr && catData) qb = qb.eq('category_id', catData.id);
+        }
+
+        const { data, error, count } = await qb.range(from, to);
+
+        if (error) {
+          console.error('Supabase getProducts error:', error);
+          return res.status(500).json({ error: 'Failed to retrieve products', message: error.message });
+        }
+
+        const products = (data || []).map(p => ({
+          ...p,
+          price: parseFloat(p.price || 0)
+        }));
+
+        const totalProducts = count || 0;
+        const totalPages = Math.ceil(totalProducts / limitInt);
+
+        return res.json({
+          message: 'Products retrieved successfully',
+          data: {
+            products,
+            pagination: {
+              current_page: pageInt,
+              total_pages: totalPages,
+              total_products: totalProducts,
+              per_page: limitInt,
+              has_next: pageInt < totalPages,
+              has_prev: pageInt > 1
+            },
+            filters: { category, brand, color, size, min_price, max_price, search }
+          }
+        });
+      } catch (err) {
+        console.error('getProducts supabase branch error:', err);
+        return res.status(500).json({ error: 'Failed to retrieve products', message: err.message });
+      }
+    }
+
+    // Fallback to SQL (existing implementation)
     // Get products with images
     const productsQuery = `
       SELECT 
@@ -114,7 +180,6 @@ const getProducts = async (req, res) => {
     queryParams.push(parseInt(limit), offset);
 
     const productsResult = await query(productsQuery, queryParams);
-
     // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as total
@@ -495,17 +560,42 @@ const getNewArrivals = async (req, res) => {
 // Get product categories
 const getCategories = async (req, res) => {
   try {
-    const result = await query(
-      'SELECT id, name, description, image_url FROM categories WHERE is_active = true ORDER BY name',
-      []
-    );
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      // Use Supabase
+      const { data: categories, error } = await supabaseAdmin
+        .from('categories')
+        .select('id, name, description, image_url, slug')
+        .eq('is_active', true)
+        .order('name');
 
-    res.json({
-      message: 'Categories retrieved successfully',
-      data: {
-        categories: result.rows
+      if (error) {
+        console.error('Supabase categories query error:', error);
+        return res.status(500).json({
+          error: 'Database query failed',
+          message: 'Failed to retrieve categories'
+        });
       }
-    });
+
+      res.json({
+        message: 'Categories retrieved successfully',
+        data: {
+          categories: categories || []
+        }
+      });
+    } else {
+      // Fallback to PostgreSQL
+      const result = await query(
+        'SELECT id, name, description, image_url FROM categories WHERE is_active = true ORDER BY name',
+        []
+      );
+
+      res.json({
+        message: 'Categories retrieved successfully',
+        data: {
+          categories: result.rows
+        }
+      });
+    }
   } catch (error) {
     console.error('Get categories error:', error);
     res.status(500).json({

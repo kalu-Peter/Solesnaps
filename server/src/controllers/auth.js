@@ -1,5 +1,4 @@
 const bcrypt = require('bcryptjs');
-const { query, transaction } = require('../config/database');
 const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 const { generateAccessToken, generateRefreshToken } = require('../middleware/auth');
 
@@ -86,54 +85,11 @@ const register = async (req, res) => {
       });
 
     } else {
-      // Fallback to local PostgreSQL
-      console.log('Creating user with local PostgreSQL...');
-      
-      // Check if user already exists
-      const existingUser = await query(
-        'SELECT id FROM users WHERE email = $1',
-        [email]
-      );
-
-      if (existingUser.rows.length > 0) {
-        return res.status(409).json({
-          error: 'User already exists',
-          message: 'An account with this email already exists'
-        });
-      }
-
-      // Hash password
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-      // Create user (auto-verified for development)
-      const result = await query(
-        `INSERT INTO users (first_name, last_name, email, password, role, is_verified) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
-         RETURNING id, first_name, last_name, email, role, is_verified, created_at`,
-        [first_name, last_name, email, hashedPassword, 'customer', true]
-      );
-
-      const user = result.rows[0];
-
-      // Generate tokens
-      const accessToken = generateAccessToken(user);
-      const refreshToken = generateRefreshToken(user);
-
-      res.status(201).json({
-        message: 'User registered successfully',
-        user: {
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-          role: user.role,
-          created_at: user.created_at
-        },
-        tokens: {
-          access_token: accessToken,
-          refresh_token: refreshToken
-        }
+      // Supabase not configured
+      console.error('❌ Supabase not configured. Cannot register user.');
+      return res.status(500).json({
+        error: 'Registration service unavailable',
+        message: 'User registration service is not properly configured'
       });
     }
   } catch (error) {
@@ -213,57 +169,11 @@ const login = async (req, res) => {
       });
 
     } else {
-      // Fallback to local PostgreSQL
-      console.log('Authenticating user with local PostgreSQL...');
-      
-      // Get user from database
-      const result = await query(
-        'SELECT id, first_name, last_name, email, password, role, is_verified FROM users WHERE email = $1',
-        [email]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(401).json({
-          error: 'Invalid credentials',
-          message: 'Email or password is incorrect'
-        });
-      }
-
-      const user = result.rows[0];
-
-      // Verify password
-      const isValidPassword = await bcrypt.compare(password, user.password);
-
-      if (!isValidPassword) {
-        return res.status(401).json({
-          error: 'Invalid credentials',
-          message: 'Email or password is incorrect'
-        });
-      }
-
-      // Generate tokens
-      const accessToken = generateAccessToken(user);
-      const refreshToken = generateRefreshToken(user);
-
-      // Update last login (optional)
-      await query(
-        'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-        [user.id]
-      );
-
-      res.json({
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-          role: user.role
-        },
-        tokens: {
-          access_token: accessToken,
-          refresh_token: refreshToken
-        }
+      // Supabase not configured
+      console.error('❌ Supabase not configured. Cannot authenticate user.');
+      return res.status(500).json({
+        error: 'Authentication service unavailable',
+        message: 'Authentication service is not properly configured'
       });
     }
   } catch (error) {
@@ -304,26 +214,11 @@ const getProfile = async (req, res) => {
       });
 
     } else {
-      // Fallback to PostgreSQL query
-      const result = await query(
-        `SELECT id, first_name, last_name, email, role, phone, 
-                date_of_birth, gender, is_verified, created_at, updated_at 
-         FROM users WHERE id = $1`,
-        [userId]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          error: 'User not found',
-          message: 'User profile not found'
-        });
-      }
-
-      const user = result.rows[0];
-
-      res.json({
-        message: 'Profile retrieved successfully',
-        user: user
+      // Supabase not configured
+      console.error('❌ Supabase not configured. Cannot get user profile.');
+      return res.status(500).json({
+        error: 'Profile service unavailable',
+        message: 'User profile service is not properly configured'
       });
     }
   } catch (error) {
@@ -341,26 +236,39 @@ const updateProfile = async (req, res) => {
     const userId = req.user.id;
     const { first_name, last_name, phone, date_of_birth, gender } = req.body;
 
-    const result = await query(
-      `UPDATE users 
-       SET first_name = $1, last_name = $2, phone = $3, date_of_birth = $4, gender = $5, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6 
-       RETURNING id, first_name, last_name, email, role, phone, date_of_birth, gender, updated_at`,
-      [first_name, last_name, phone, date_of_birth, gender, userId]
-    );
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      console.error('❌ Supabase not configured. Cannot update profile.');
+      return res.status(500).json({
+        error: 'Profile service unavailable',
+        message: 'Profile update service is not properly configured'
+      });
+    }
 
-    if (result.rows.length === 0) {
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('users')
+      .update({
+        first_name,
+        last_name,
+        phone,
+        date_of_birth,
+        gender,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select('id, first_name, last_name, email, role, phone, date_of_birth, gender, updated_at')
+      .single();
+
+    if (profileError || !profileData) {
+      console.error('Supabase update profile error:', profileError);
       return res.status(404).json({
         error: 'User not found',
         message: 'User profile not found'
       });
     }
 
-    const user = result.rows[0];
-
     res.json({
       message: 'Profile updated successfully',
-      user: user
+      user: profileData
     });
   } catch (error) {
     console.error('Update profile error:', error);
@@ -377,40 +285,42 @@ const changePassword = async (req, res) => {
     const userId = req.user.id;
     const { current_password, new_password } = req.body;
 
-    // Get current password hash
-    const result = await query(
-      'SELECT password FROM users WHERE id = $1',
-      [userId]
-    );
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      console.error('❌ Supabase not configured. Cannot change password.');
+      return res.status(500).json({
+        error: 'Password service unavailable',
+        message: 'Password change service is not properly configured'
+      });
+    }
 
-    if (result.rows.length === 0) {
+    // Get user auth_id from users table
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('auth_id')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !userData) {
+      console.error('Supabase user lookup error:', userError);
       return res.status(404).json({
         error: 'User not found',
         message: 'User not found'
       });
     }
 
-    const user = result.rows[0];
+    // Update password using Supabase Auth
+    const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
+      userData.auth_id,
+      { password: new_password }
+    );
 
-    // Verify current password
-    const isValidPassword = await bcrypt.compare(current_password, user.password);
-
-    if (!isValidPassword) {
+    if (passwordError) {
+      console.error('Supabase password update error:', passwordError);
       return res.status(400).json({
-        error: 'Invalid password',
-        message: 'Current password is incorrect'
+        error: 'Password update failed',
+        message: 'Failed to update password'
       });
     }
-
-    // Hash new password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(new_password, saltRounds);
-
-    // Update password
-    await query(
-      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-      [hashedPassword, userId]
-    );
 
     res.json({
       message: 'Password changed successfully'
@@ -448,23 +358,31 @@ const refreshToken = async (req, res) => {
     }
 
     // Get user
-    const result = await query(
-      'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
-      [decoded.userId]
-    );
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      console.error('❌ Supabase not configured. Cannot refresh token.');
+      return res.status(500).json({
+        error: 'Authentication service unavailable',
+        message: 'Token refresh service is not properly configured'
+      });
+    }
 
-    if (result.rows.length === 0 || !result.rows[0].is_verified) {
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, first_name, last_name, email, role, is_verified')
+      .eq('id', decoded.userId)
+      .single();
+
+    if (userError || !userData || !userData.is_verified) {
+      console.error('Supabase user lookup error:', userError);
       return res.status(401).json({
         error: 'Invalid token',
         message: 'User not found or not verified'
       });
     }
 
-    const user = result.rows[0];
-
     // Generate new tokens
-    const newAccessToken = generateAccessToken(user);
-    const newRefreshToken = generateRefreshToken(user);
+    const newAccessToken = generateAccessToken(userData);
+    const newRefreshToken = generateRefreshToken(userData);
 
     res.json({
       message: 'Token refreshed successfully',

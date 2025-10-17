@@ -1,4 +1,5 @@
 const { query, transaction } = require('../config/database');
+const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Create new order with delivery location
 const createOrderWithDelivery = async (req, res) => {
@@ -229,50 +230,53 @@ const getUserOrders = async (req, res) => {
     const userId = req.user.id;
     const { page = 1, limit = 10, status } = req.query;
     const offset = (page - 1) * limit;
-
-    let whereClause = 'WHERE o.user_id = $1';
-    let queryParams = [userId];
-
-    if (status) {
-      whereClause += ' AND o.status = $2';
-      queryParams.push(status);
+    // Use Supabase for orders retrieval
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      return res.status(500).json({
+        error: 'Database unavailable',
+        message: 'Orders service is not properly configured'
+      });
     }
 
-    const ordersQuery = `
-      SELECT 
-        o.id, o.total_amount, o.status, o.shipping_address, 
-        o.payment_method, o.notes, o.created_at, o.updated_at,
-        COUNT(oi.id) as item_count
-      FROM orders o
-      LEFT JOIN order_items oi ON o.id = oi.order_id
-      ${whereClause}
-      GROUP BY o.id
-      ORDER BY o.created_at DESC
-      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
-    `;
+    const pageInt = parseInt(page, 10);
+    const limitInt = parseInt(limit, 10);
+    const from = offset;
+    const to = offset + limitInt - 1;
 
-    queryParams.push(parseInt(limit), offset);
+    let queryBuilder = supabaseAdmin
+      .from('orders')
+      .select(`id, user_id, order_number, total_amount, subtotal_amount, shipping_amount, status, payment_method, payment_status, shipping_address, billing_address, notes, created_at, updated_at, delivery_location_id, tracking_number, order_items(id, product_id, quantity, price)` , { count: 'exact' })
+      .order('created_at', { ascending: false });
 
-    const ordersResult = await query(ordersQuery, queryParams);
+    queryBuilder = queryBuilder.eq('user_id', userId);
+    if (status) queryBuilder = queryBuilder.eq('status', status);
 
-    // Get total count
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM orders o ${whereClause}`,
-      queryParams.slice(0, -2)
-    );
+    const { data, error, count } = await queryBuilder.range(from, to);
 
-    const totalOrders = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(totalOrders / limit);
+    if (error) {
+      console.error('Supabase getUserOrders error:', error);
+      return res.status(500).json({ error: 'Failed to retrieve orders', message: error.message });
+    }
+
+    // map item_count
+    const orders = (data || []).map(o => ({
+      ...o,
+      total_amount: parseFloat(o.total_amount || 0),
+      item_count: (o.order_items || []).length
+    }));
+
+    const totalOrders = count || 0;
+    const totalPages = Math.ceil(totalOrders / limitInt);
 
     res.json({
       message: 'Orders retrieved successfully',
       data: {
-        orders: ordersResult.rows,
+        orders,
         pagination: {
-          current_page: parseInt(page),
+          current_page: pageInt,
           total_pages: totalPages,
           total_orders: totalOrders,
-          per_page: parseInt(limit)
+          per_page: limitInt
         }
       }
     });
@@ -291,61 +295,44 @@ const getOrder = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
-
-    // Build query based on user role
-    let whereClause = 'WHERE o.id = $1';
-    let queryParams = [id];
-
-    if (!isAdmin) {
-      whereClause += ' AND o.user_id = $2';
-      queryParams.push(userId);
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      return res.status(500).json({ error: 'Database unavailable', message: 'Order service not configured' });
     }
 
-    const orderQuery = `
-      SELECT 
-        o.id, o.user_id, o.order_number, o.total_amount, o.subtotal_amount, 
-        o.shipping_amount, o.status, o.payment_method, o.payment_status,
-        o.shipping_address, o.billing_address, o.notes, o.created_at, o.updated_at,
-        o.delivery_location_id, o.tracking_number,
-        CONCAT(u.first_name, ' ', u.last_name) as user_name, u.email as user_email,
-        u.phone as user_phone
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      ${whereClause}
-    `;
+    // Fetch order with nested items and user info
+    let qb = supabaseAdmin
+      .from('orders')
+      .select(`*, order_items(id, product_id, quantity, price, size, color, products!inner(id, name, images)), users:users(id, first_name, last_name, email, phone)`)
+      .eq('id', id);
 
-    const orderResult = await query(orderQuery, queryParams);
+    if (!isAdmin) qb = qb.eq('user_id', userId);
 
-    if (orderResult.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Order not found',
-        message: 'The requested order was not found'
-      });
+    const { data, error } = await qb.single();
+
+    if (error || !data) {
+      console.error('Supabase getOrder error:', error);
+      return res.status(404).json({ error: 'Order not found', message: 'The requested order was not found' });
     }
 
-    const order = orderResult.rows[0];
+    // Normalize items
+    const items = (data.order_items || []).map(i => ({
+      id: i.id,
+      product_id: i.product_id,
+      quantity: i.quantity,
+      price: parseFloat(i.price || 0),
+      size: i.size,
+      color: i.color,
+      product_name: i.products ? i.products.name : undefined,
+      images: i.products ? i.products.images : []
+    }));
 
-    // Get order items
-    const itemsQuery = `
-      SELECT 
-        oi.id, oi.product_id, oi.quantity, oi.price, oi.size, oi.color,
-        p.name as product_name, p.images
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = $1
-    `;
+    const order = {
+      ...data,
+      total_amount: parseFloat(data.total_amount || 0),
+      items
+    };
 
-    const itemsResult = await query(itemsQuery, [id]);
-
-    res.json({
-      message: 'Order retrieved successfully',
-      data: {
-        order: {
-          ...order,
-          items: itemsResult.rows
-        }
-      }
-    });
+    res.json({ message: 'Order retrieved successfully', data: { order } });
   } catch (error) {
     console.error('Get order error:', error);
     res.status(500).json({
@@ -370,27 +357,23 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const result = await query(
-      `UPDATE orders 
-       SET status = $1, notes = COALESCE($2, notes), updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 
-       RETURNING *`,
-      [status, notes, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Order not found',
-        message: 'The requested order was not found'
-      });
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      return res.status(500).json({ error: 'Database unavailable', message: 'Order update service not configured' });
     }
 
-    res.json({
-      message: 'Order status updated successfully',
-      data: {
-        order: result.rows[0]
-      }
-    });
+    const { data, error } = await supabaseAdmin
+      .from('orders')
+      .update({ status, notes: notes ?? undefined, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      console.error('Supabase updateOrderStatus error:', error);
+      return res.status(404).json({ error: 'Order not found', message: 'The requested order was not found' });
+    }
+
+    res.json({ message: 'Order status updated successfully', data: { order: data } });
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({

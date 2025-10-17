@@ -97,7 +97,7 @@ const AdminAnalytics = () => {
       setError(null);
 
       // Fetch orders data
-      const ordersResponse = await fetch('/api/orders', {
+      const ordersResponse = await fetch('/admin/orders', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ const AdminAnalytics = () => {
       });
 
       // Fetch users data
-      const usersResponse = await fetch('/api/users', {
+      const usersResponse = await fetch('/admin/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ const AdminAnalytics = () => {
       });
 
       // Fetch products data
-      const productsResponse = await fetch('/api/products', {
+      const productsResponse = await fetch('/admin/products', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

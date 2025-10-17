@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Get all users (Admin only)
 const getAllUsers = async (req, res) => {
@@ -10,66 +11,118 @@ const getAllUsers = async (req, res) => {
       is_active,
       search 
     } = req.query;
-    
-    const offset = (page - 1) * limit;
 
-    let whereConditions = [];
-    let queryParams = [];
-    let paramIndex = 1;
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      // Use Supabase
+      let supabaseQuery = supabaseAdmin
+        .from('users')
+        .select('id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, created_at, updated_at', { count: 'exact' });
 
-    if (role) {
-      whereConditions.push(`role = $${paramIndex}`);
-      queryParams.push(role);
-      paramIndex++;
-    }
+      // Apply filters
+      if (role) {
+        supabaseQuery = supabaseQuery.eq('role', role);
+      }
 
-    if (is_active !== undefined) {
-      whereConditions.push(`is_verified = $${paramIndex}`);
-      queryParams.push(is_active === 'true');
-      paramIndex++;
-    }
+      if (is_active !== undefined) {
+        supabaseQuery = supabaseQuery.eq('is_verified', is_active === 'true');
+      }
 
-    if (search) {
-      whereConditions.push(`(CONCAT(first_name, ' ', last_name) ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
-      queryParams.push(`%${search}%`);
-      paramIndex++;
-    }
+      if (search) {
+        // For Supabase, we'll search in email for now (full-text search would need different approach)
+        supabaseQuery = supabaseQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
+      }
 
-    const whereClause = whereConditions.length > 0 ? 
-      `WHERE ${whereConditions.join(' AND ')}` : '';
+      // Apply pagination
+      const offset = (page - 1) * limit;
+      supabaseQuery = supabaseQuery
+        .order('created_at', { ascending: false })
+        .range(offset, offset + parseInt(limit) - 1);
 
-    const usersQuery = `
-      SELECT 
-        id, first_name, last_name, email, role, phone, 
-        date_of_birth, gender, is_verified, created_at, updated_at
-      FROM users
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+      const { data: users, error, count } = await supabaseQuery;
 
-    queryParams.push(parseInt(limit), offset);
+      if (error) {
+        console.error('Supabase users query error:', error);
+        return res.status(500).json({
+          error: 'Database query failed',
+          message: 'Failed to retrieve users'
+        });
+      }
 
-    const usersResult = await query(usersQuery, queryParams);
+      const totalPages = Math.ceil(count / limit);
 
-    // Get total count
-    const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
-    const countResult = await query(countQuery, queryParams.slice(0, -2));
-    const totalUsers = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(totalUsers / limit);
-
-    res.json({
-      message: 'Users retrieved successfully',
-      data: {
-        users: usersResult.rows,
+      res.json({
+        message: 'Users retrieved successfully',
+        users: users || [],
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,
-          total_users: totalUsers,
+          total_count: count,
           per_page: parseInt(limit)
         }
+      });
+
+    } else {
+      // Fallback to PostgreSQL
+      const offset = (page - 1) * limit;
+
+      let whereConditions = [];
+      let queryParams = [];
+      let paramIndex = 1;
+
+      if (role) {
+        whereConditions.push(`role = $${paramIndex}`);
+        queryParams.push(role);
+        paramIndex++;
       }
-    });
+
+      if (is_active !== undefined) {
+        whereConditions.push(`is_verified = $${paramIndex}`);
+        queryParams.push(is_active === 'true');
+        paramIndex++;
+      }
+
+      if (search) {
+        whereConditions.push(`(CONCAT(first_name, ' ', last_name) ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
+        queryParams.push(`%${search}%`);
+        paramIndex++;
+      }
+
+      const whereClause = whereConditions.length > 0 ? 
+        `WHERE ${whereConditions.join(' AND ')}` : '';
+
+      const usersQuery = `
+        SELECT 
+          id, first_name, last_name, email, role, phone, 
+          date_of_birth, gender, is_verified, created_at, updated_at
+        FROM users
+        ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+
+      queryParams.push(parseInt(limit), offset);
+
+      const usersResult = await query(usersQuery, queryParams);
+
+      // Get total count
+      const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
+      const countResult = await query(countQuery, queryParams.slice(0, -2));
+      const totalUsers = parseInt(countResult.rows[0].total);
+      const totalPages = Math.ceil(totalUsers / limit);
+
+      res.json({
+        message: 'Users retrieved successfully',
+        data: {
+          users: usersResult.rows,
+          pagination: {
+            current_page: parseInt(page),
+            total_pages: totalPages,
+            total_users: totalUsers,
+            per_page: parseInt(limit)
+          }
+        }
+      });
+    }
   } catch (error) {
     console.error('Get all users error:', error);
     res.status(500).json({

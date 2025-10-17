@@ -1,21 +1,47 @@
 const { query } = require('../config/database');
+const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Get all delivery locations
 const getDeliveryLocations = async (req, res) => {
   try {
-    const result = await query(`
-      SELECT id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status
-      FROM delivery_locations 
-      WHERE pickup_status = 'active'
-      ORDER BY city_name
-    `);
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      // Use Supabase
+      const { data: locations, error } = await supabaseAdmin
+        .from('delivery_locations')
+        .select('id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status')
+        .eq('pickup_status', 'active')
+        .order('city_name');
 
-    res.json({
-      message: 'Delivery locations retrieved successfully',
-      data: {
-        locations: result.rows
+      if (error) {
+        console.error('Supabase delivery locations query error:', error);
+        return res.status(500).json({
+          error: 'Database query failed',
+          message: 'Failed to retrieve delivery locations'
+        });
       }
-    });
+
+      res.json({
+        message: 'Delivery locations retrieved successfully',
+        data: {
+          locations: locations || []
+        }
+      });
+    } else {
+      // Fallback to PostgreSQL
+      const result = await query(`
+        SELECT id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status
+        FROM delivery_locations 
+        WHERE pickup_status = 'active'
+        ORDER BY city_name
+      `);
+
+      res.json({
+        message: 'Delivery locations retrieved successfully',
+        data: {
+          locations: result.rows
+        }
+      });
+    }
   } catch (error) {
     console.error('Get delivery locations error:', error);
     res.status(500).json({

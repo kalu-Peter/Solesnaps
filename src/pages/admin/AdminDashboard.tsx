@@ -73,7 +73,7 @@ const AdminDashboard = () => {
 
     try {
       // Fetch orders for total revenue and order count
-      const ordersResponse = await fetch('/api/orders', {
+      const ordersResponse = await fetch('/admin/orders', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ const AdminDashboard = () => {
       });
 
       // Fetch users count
-      const usersResponse = await fetch('/api/users', {
+      const usersResponse = await fetch('/admin/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ const AdminDashboard = () => {
       });
 
       // Fetch products count
-      const productsResponse = await fetch('/api/products', {
+      const productsResponse = await fetch('/admin/products', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -97,51 +97,66 @@ const AdminDashboard = () => {
       });
 
       if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json();
-        const orders = ordersData.data.orders;
-        
-        // Calculate total revenue
+        const ordersData = await ordersResponse.json().catch((e) => {
+          console.error('Invalid JSON from /admin/orders:', e);
+          return null;
+        });
+        const orders = ordersData?.data?.orders || [];
+
+        // Calculate total revenue (safe reduce)
         const totalRevenue = orders.reduce((sum: number, order: any) => {
-          return sum + parseFloat(order.total_amount || 0);
+          return sum + parseFloat(order?.total_amount || 0);
         }, 0);
 
         setStats(prev => ({
           ...prev,
           totalRevenue,
-          totalOrders: ordersData.data.pagination?.total_orders || orders.length,
+          totalOrders: ordersData?.data?.pagination?.total_orders ?? orders.length,
         }));
 
         // Set recent orders (first 5)
-        const formattedOrders: RecentOrder[] = orders.slice(0, 5).map((order: any) => ({
-          id: order.id,
-          order_number: order.order_number || `#${order.id}`,
-          user_name: order.user_name || 'Unknown User',
-          user_email: order.user_email || 'No email',
-          status: order.status,
-          total_amount: parseFloat(order.total_amount || 0),
-          created_at: order.created_at,
+        const formattedOrders: RecentOrder[] = (orders.slice(0, 5) || []).map((order: any) => ({
+          id: order?.id,
+          order_number: order?.order_number || `#${order?.id}`,
+          user_name: order?.user_name || 'Unknown User',
+          user_email: order?.user_email || 'No email',
+          status: order?.status || 'unknown',
+          total_amount: parseFloat(order?.total_amount || 0),
+          created_at: order?.created_at || new Date().toISOString(),
         }));
         setRecentOrders(formattedOrders);
+      } else {
+        // Non-ok response: log and keep defaults
+        console.warn('/admin/orders returned', ordersResponse.status, ordersResponse.statusText);
       }
 
       if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
+        const usersData = await usersResponse.json().catch((e) => {
+          console.error('Invalid JSON from /admin/users:', e);
+          return null;
+        });
+        const totalUsers = usersData?.data?.pagination?.total_users ?? usersData?.data?.users?.length ?? 0;
         setStats(prev => ({
           ...prev,
-          totalUsers: usersData.data.pagination?.total_users || usersData.data.users?.length || 0,
+          totalUsers,
         }));
+      } else {
+        console.warn('/admin/users returned', usersResponse.status, usersResponse.statusText);
       }
 
       if (productsResponse.ok) {
-        const productsData = await productsResponse.json();
+        const productsData = await productsResponse.json().catch((e) => {
+          console.error('Invalid JSON from /admin/products:', e);
+          return null;
+        });
+        const products = productsData?.data?.products || [];
         setStats(prev => ({
           ...prev,
-          totalProducts: productsData.data.pagination?.total_products || productsData.data.products?.length || 0,
+          totalProducts: productsData?.data?.pagination?.total_products ?? products.length,
         }));
 
         // Mock top products calculation (you can enhance this with actual sales data)
-        const products = productsData.data.products || [];
-        const mockTopProducts: TopProduct[] = products.slice(0, 2).map((product: any, index: number) => ({
+        const mockTopProducts: TopProduct[] = (products.slice(0, 2) || []).map((product: any, index: number) => ({
           id: product.id,
           name: product.name,
           category: 'Shoes', // You can get this from categories if available
@@ -149,6 +164,9 @@ const AdminDashboard = () => {
           total_revenue: Math.floor(Math.random() * 20000) + 5000, // Mock revenue data
         }));
         setTopProducts(mockTopProducts);
+      }
+      else {
+        console.warn('/admin/products returned', productsResponse.status, productsResponse.statusText);
       }
 
     } catch (err) {

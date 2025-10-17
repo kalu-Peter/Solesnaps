@@ -200,7 +200,7 @@ const AdminProducts = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/products?${params}`, {
+      const response = await fetch(`/admin/products?${params}`, {
         headers: headers,
       });
 
@@ -245,7 +245,7 @@ const AdminProducts = () => {
       console.log('Creating product with data:', productData);
 
       // Create product first
-      const response = await fetch('/api/products', {
+      const response = await fetch('/admin/products', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -324,7 +324,7 @@ const AdminProducts = () => {
         gender: formData.gender === "none" ? undefined : formData.gender,
       };
 
-      const response = await fetch(`http://localhost:5000/api/products/${selectedProduct.id}`, {
+      const response = await fetch(`/admin/products/${selectedProduct.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -365,7 +365,7 @@ const AdminProducts = () => {
     try {
       const token = localStorage.getItem('auth_token');
 
-      const response = await fetch(`http://localhost:5000/api/products/${productToDelete.id}`, {
+      const response = await fetch(`/admin/products/${productToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -485,7 +485,7 @@ const AdminProducts = () => {
       });
 
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:5000/api/products/images', {
+      const response = await fetch('/api/products/images', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

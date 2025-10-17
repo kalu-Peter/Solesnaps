@@ -110,7 +110,7 @@ const AdminUsers: React.FC = () => {
       if (roleFilter !== 'all') params.append('role', roleFilter);
       if (statusFilter !== 'all') params.append('is_verified', statusFilter);
 
-      const response = await fetch(`/api/users?${params}`, {
+      const response = await fetch(`/admin/users?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -271,7 +271,7 @@ const AdminUsers: React.FC = () => {
         ...(formData.gender && { gender: formData.gender })
       };
 
-      const response = await fetch('/api/users', {
+      const response = await fetch('/admin/users', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -350,7 +350,7 @@ const AdminUsers: React.FC = () => {
         delete updateData.gender;
       }
 
-      const response = await fetch(`/api/users/${selectedUser.id}`, {
+      const response = await fetch(`/admin/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -393,7 +393,7 @@ const AdminUsers: React.FC = () => {
   const handleToggleUserStatus = async (user: User) => {
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/users/${user.id}/status`, {
+      const response = await fetch(`/admin/users/${user.id}/status`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -428,7 +428,7 @@ const AdminUsers: React.FC = () => {
 
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/users/${userToDelete.id}`, {
+      const response = await fetch(`/admin/users/${userToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

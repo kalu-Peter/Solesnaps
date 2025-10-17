@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const { isSupabaseEnabled, testSupabaseConnection } = require('./supabase');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 // Force Supabase-only mode - disable local PostgreSQL
 const useSupabase = true; // Always use Supabase
