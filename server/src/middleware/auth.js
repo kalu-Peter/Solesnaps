@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
+const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Verify JWT token
 const authenticateToken = async (req, res, next) => {
@@ -17,34 +18,67 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user from database to ensure they still exist
-    const result = await query(
-      'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
-      [decoded.userId]
-    );
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      // Use Supabase to verify user
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('id, first_name, last_name, email, role, is_verified')
+        .eq('id', decoded.userId)
+        .single();
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({
-        error: 'Invalid token',
-        message: 'User not found'
-      });
+      if (userError || !userData) {
+        return res.status(401).json({
+          error: 'Invalid token',
+          message: 'User not found'
+        });
+      }
+
+      if (!userData.is_verified) {
+        return res.status(401).json({
+          error: 'Account not verified',
+          message: 'Your account is not verified'
+        });
+      }
+
+      req.user = {
+        id: userData.id,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        role: userData.role
+      };
+
+    } else {
+      // Fallback to PostgreSQL query
+      const result = await query(
+        'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          error: 'Invalid token',
+          message: 'User not found'
+        });
+      }
+
+      const user = result.rows[0];
+
+      if (!user.is_verified) {
+        return res.status(401).json({
+          error: 'Account not verified',
+          message: 'Your account is not verified'
+        });
+      }
+
+      req.user = {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: user.role
+      };
     }
-
-    const user = result.rows[0];
-
-    if (!user.is_verified) {
-      return res.status(401).json({
-        error: 'Account not verified',
-        message: 'Your account is not verified'
-      });
-    }
-
-    req.user = {
-      id: user.id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      role: user.role
-    };
 
     next();
   } catch (error) {
@@ -106,20 +140,40 @@ const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      const result = await query(
-        'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
-        [decoded.userId]
-      );
+      if (isSupabaseEnabled() && supabaseAdmin) {
+        // Use Supabase to verify user
+        const { data: userData, error: userError } = await supabaseAdmin
+          .from('users')
+          .select('id, first_name, last_name, email, role, is_verified')
+          .eq('id', decoded.userId)
+          .single();
 
-      if (result.rows.length > 0 && result.rows[0].is_verified) {
-        const user = result.rows[0];
-        req.user = {
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-          role: user.role
-        };
+        if (!userError && userData && userData.is_verified) {
+          req.user = {
+            id: userData.id,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            email: userData.email,
+            role: userData.role
+          };
+        }
+      } else {
+        // Fallback to PostgreSQL query
+        const result = await query(
+          'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
+          [decoded.userId]
+        );
+
+        if (result.rows.length > 0 && result.rows[0].is_verified) {
+          const user = result.rows[0];
+          req.user = {
+            id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+            role: user.role
+          };
+        }
       }
     }
 

@@ -1,17 +1,26 @@
 const { Pool } = require('pg');
+const { isSupabaseEnabled, testSupabaseConnection } = require('./supabase');
 require('dotenv').config();
 
-// Database configuration
+// Force Supabase-only mode - disable local PostgreSQL
+const useSupabase = true; // Always use Supabase
+
+console.log('🌐 Database mode: SUPABASE ONLY - Local PostgreSQL disabled');
+
+// Database configuration - Supabase only mode
+// Direct database connection is disabled - using Supabase API exclusively
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5054,
-  database: process.env.DB_NAME || 'soledb',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'webwiz',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20, // Maximum number of connections
-  idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-  connectionTimeoutMillis: 2000, // Timeout after 2 seconds
+  // Disable direct PostgreSQL connection pool for Supabase-only mode
+  // All database operations will go through Supabase client
+  host: 'disabled-using-supabase-api',
+  port: 0,
+  database: 'supabase-api-only',
+  user: 'supabase-client',
+  password: 'api-mode',
+  ssl: false,
+  max: 1,
+  idleTimeoutMillis: 1000,
+  connectionTimeoutMillis: 1000,
 };
 
 // Create connection pool
@@ -19,7 +28,7 @@ const pool = new Pool(dbConfig);
 
 // Handle pool events
 pool.on('connect', (client) => {
-  console.log('🔗 New client connected to PostgreSQL');
+  console.log(`🔗 New client connected to ${useSupabase ? 'Supabase' : 'local'} PostgreSQL`);
 });
 
 pool.on('error', (err, client) => {
@@ -27,16 +36,23 @@ pool.on('error', (err, client) => {
   process.exit(-1);
 });
 
-// Test database connection
+// Test database connection - Supabase API only
 const testConnection = async () => {
   try {
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW()');
-    console.log('✅ Database connected successfully at:', result.rows[0].now);
-    client.release();
-    return true;
+    console.log('🌐 Testing Supabase API connection (no direct PostgreSQL)...');
+    
+    // Test Supabase client connection
+    const supabaseTestResult = await testSupabaseConnection();
+    if (supabaseTestResult) {
+      console.log('✅ Supabase API client connected successfully');
+      console.log('🔗 Database operations will use Supabase client exclusively');
+      return true;
+    } else {
+      console.error('❌ Supabase API connection failed');
+      return false;
+    }
   } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
+    console.error('❌ Supabase connection test failed:', error.message);
     return false;
   }
 };
@@ -95,5 +111,12 @@ module.exports = {
   query,
   transaction,
   testConnection,
-  closePool
+  closePool,
+  
+  // Export configuration info
+  config: {
+    useSupabase,
+    dbConfig,
+    connectionType: useSupabase ? 'supabase' : 'local'
+  }
 };
