@@ -21,128 +21,115 @@ import {
   Calendar,
   MapPin,
   CreditCard,
+  LogIn,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-
-interface OrderItem {
-  id: number;
-  product_id: number;
-  product_name: string;
-  product_image: string;
-  quantity: number;
-  price: string;
-  size?: string;
-  color?: string;
-}
-
-interface Order {
-  id: number;
-  order_number: string;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  total_amount: string;
-  created_at: string;
-  updated_at: string;
-  shipping_address: string;
-  payment_method: string;
-  tracking_number?: string;
-  estimated_delivery?: string;
-  items: OrderItem[];
-}
+import { orderService, Order, OrderItem } from '../services/orderService';
 
 const MyOrders = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
 
-  // Mock orders data (replace with actual API call)
-  const mockOrders: Order[] = [
-    {
-      id: 1,
-      order_number: "ORD-2025-001",
-      status: "delivered",
-      total_amount: "11500.00",
-      created_at: "2025-01-10T10:30:00Z",
-      updated_at: "2025-01-15T14:20:00Z",
-      shipping_address: "123 Main St, Nairobi, Kenya",
-      payment_method: "M-Pesa",
-      tracking_number: "TRK123456789",
-      estimated_delivery: "2025-01-15",
-      items: [
-        {
-          id: 1,
-          product_id: 101,
-          product_name: "Sport Runner Pro",
-          product_image: "/assets/brown.jpg",
-          quantity: 1,
-          price: "11500.00",
-          size: "10",
-          color: "Black"
+  // Fetch orders from database
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Debug authentication state
+        console.log('Auth state:', { 
+          user: user?.id, 
+          isAuthenticated, 
+          token: localStorage.getItem('auth_token') ? 'present' : 'missing',
+          userObject: user // Add full user object to debug
+        });
+        
+        // Convert sortBy to API parameters
+        let sortParams = {};
+        switch (sortBy) {
+          case "newest":
+            sortParams = { sort_by: 'created_at', sort_order: 'desc' as const };
+            break;
+          case "oldest":
+            sortParams = { sort_by: 'created_at', sort_order: 'asc' as const };
+            break;
+          case "amount-high":
+            sortParams = { sort_by: 'total_amount', sort_order: 'desc' as const };
+            break;
+          case "amount-low":
+            sortParams = { sort_by: 'total_amount', sort_order: 'asc' as const };
+            break;
+          default:
+            sortParams = { sort_by: 'created_at', sort_order: 'desc' as const };
         }
-      ]
-    },
-    {
-      id: 2,
-      order_number: "ORD-2025-002",
-      status: "shipped",
-      total_amount: "23700.00",
-      created_at: "2025-01-12T15:45:00Z",
-      updated_at: "2025-01-16T09:30:00Z",
-      shipping_address: "456 Oak Ave, Mombasa, Kenya",
-      payment_method: "Credit Card",
-      tracking_number: "TRK987654321",
-      estimated_delivery: "2025-01-18",
-      items: [
-        {
-          id: 2,
-          product_id: 102,
-          product_name: "Urban Classic",
-          product_image: "/assets/womens.jpg",
-          quantity: 2,
-          price: "10200.00",
-          size: "9",
-          color: "Brown"
-        },
-        {
-          id: 3,
-          product_id: 103,
-          product_name: "Trail Explorer",
-          product_image: "/assets/female.jpg",
-          quantity: 1,
-          price: "3300.00",
-          size: "8",
-          color: "Green"
+        
+        const response = await orderService.getUserOrders(user.id, {
+          status: filterStatus !== "all" ? filterStatus : undefined,
+          limit: 50, // Fetch up to 50 orders
+          ...sortParams
+        });
+        
+        // Ensure orders data is properly structured
+        const ordersData = response?.data?.orders || [];
+        const validOrders = ordersData.map((order: any) => ({
+          ...order,
+          items: (order.items || []).map((item: any) => ({
+            ...item,
+            product_name: typeof item.product_name === 'string' 
+              ? item.product_name 
+              : (item.product_name as any)?.name || 'Product name not available',
+            price: item.price || '0',
+            quantity: item.quantity || 0,
+            product_image: item.product_image || '',
+          })),
+          total_amount: order.total_amount || '0',
+          created_at: order.created_at || new Date().toISOString(),
+          shipping_address: typeof order.shipping_address === 'string' 
+            ? order.shipping_address 
+            : (order.shipping_address as any)?.address || 'Address not available',
+          payment_method: typeof order.payment_method === 'string' 
+            ? order.payment_method 
+            : (order.payment_method as any)?.method || 'Payment method not available',
+          tracking_number: order.tracking_number || null,
+          estimated_delivery: order.estimated_delivery || null,
+        }));
+        
+        setOrders(validOrders);
+      } catch (err) {
+        console.error("Failed to fetch orders:", err);
+        
+        // Handle different types of errors
+        if (err instanceof Error) {
+          if (err.message.includes('Unauthorized')) {
+            setError("Your session has expired. Please login again.");
+          } else if (err.message.includes('Forbidden')) {
+            setError("You don't have permission to access these orders. Please contact support if this seems incorrect.");
+          } else {
+            setError(err.message);
+          }
+        } else {
+          setError("Failed to load orders");
         }
-      ]
-    },
-    {
-      id: 3,
-      order_number: "ORD-2025-003",
-      status: "processing",
-      total_amount: "16600.00",
-      created_at: "2025-01-14T11:20:00Z",
-      updated_at: "2025-01-16T16:45:00Z",
-      shipping_address: "789 Pine Rd, Kisumu, Kenya",
-      payment_method: "M-Pesa",
-      estimated_delivery: "2025-01-20",
-      items: [
-        {
-          id: 4,
-          product_id: 104,
-          product_name: "Performance Runner",
-          product_image: "/assets/women2.jpg",
-          quantity: 1,
-          price: "16600.00",
-          size: "11",
-          color: "Blue"
-        }
-      ]
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated && user) {
+      fetchOrders();
     }
-  ];
+  }, [isAuthenticated, user, filterStatus, sortBy]); // Add filterStatus and sortBy as dependencies
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -152,43 +139,19 @@ const MyOrders = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Fetch orders (mock for now)
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        // TODO: Replace with actual API call
-        // const response = await orderService.getUserOrders(user?.id);
-        // setOrders(response.data.orders);
-        
-        // Mock delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setOrders(mockOrders);
-      } catch (error) {
-        console.error("Failed to fetch orders:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (isAuthenticated && user) {
-      fetchOrders();
-    }
-  }, [isAuthenticated, user]);
-
   // Filter and sort orders
-  const filteredOrders = orders
+  const filteredOrders = (orders || [])
     .filter(order => filterStatus === "all" || order.status === filterStatus)
     .sort((a, b) => {
       switch (sortBy) {
         case "newest":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
         case "oldest":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
         case "amount-high":
-          return parseFloat(b.total_amount) - parseFloat(a.total_amount);
+          return parseFloat(b.total_amount || '0') - parseFloat(a.total_amount || '0');
         case "amount-low":
-          return parseFloat(a.total_amount) - parseFloat(b.total_amount);
+          return parseFloat(a.total_amount || '0') - parseFloat(b.total_amount || '0');
         default:
           return 0;
       }
@@ -244,6 +207,28 @@ const MyOrders = () => {
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  // Early loading state while orders are being fetched
+  if (loading && !orders) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <section className="py-8 border-b border-border">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center gap-3 mb-4">
+              <Package className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+                My Orders
+              </h1>
+            </div>
+            <p className="text-muted-foreground">
+              Loading your orders...
+            </p>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -324,6 +309,30 @@ const MyOrders = () => {
                 </Card>
               ))}
             </div>
+          ) : error ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <XCircle className="h-12 w-12 text-red-500 mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Failed to Load Orders
+                </h3>
+                <p className="text-muted-foreground text-center mb-6">
+                  {error}
+                </p>
+                <div className="flex gap-3">
+                  <Button onClick={() => window.location.reload()}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                  {(error?.includes('session has expired') || error?.includes('Unauthorized') || error?.includes('permission')) && (
+                    <Button variant="outline" onClick={() => navigate('/login')}>
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Login
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           ) : filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -358,7 +367,10 @@ const MyOrders = () => {
                           </span>
                           <span className="flex items-center gap-1">
                             <CreditCard className="h-4 w-4" />
-                            {order.payment_method}
+                            {typeof order.payment_method === 'string' 
+                              ? order.payment_method 
+                              : (order.payment_method as any)?.method || 'Payment method not available'
+                            }
                           </span>
                         </div>
                       </div>
@@ -372,10 +384,10 @@ const MyOrders = () => {
                         </Badge>
                         <div className="text-right">
                           <div className="text-lg font-semibold">
-                            KES {parseFloat(order.total_amount).toLocaleString()}
+                            KES {parseFloat(order.total_amount || '0').toLocaleString()}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                            {(order.items || []).length} item{(order.items || []).length > 1 ? 's' : ''}
                           </div>
                         </div>
                       </div>
@@ -385,15 +397,24 @@ const MyOrders = () => {
                   <CardContent className="p-6">
                     {/* Order Items */}
                     <div className="space-y-4">
-                      {order.items.map((item) => (
+                      {(order.items || []).map((item) => (
                         <div key={item.id} className="flex items-center gap-4">
                           <img
-                            src={item.product_image}
-                            alt={item.product_name}
+                            src={item.product_image || '/placeholder-product.jpg'}
+                            alt={typeof item.product_name === 'string' ? item.product_name : 'Product'}
                             className="h-16 w-16 rounded-lg object-cover bg-muted"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/placeholder-product.jpg';
+                            }}
                           />
                           <div className="flex-1">
-                            <h4 className="font-medium">{item.product_name}</h4>
+                            <h4 className="font-medium">
+                              {typeof item.product_name === 'string' 
+                                ? item.product_name 
+                                : (item.product_name as any)?.name || 'Product name not available'
+                              }
+                            </h4>
                             <div className="text-sm text-muted-foreground">
                               {item.size && `Size: ${item.size}`}
                               {item.size && item.color && " • "}
@@ -402,10 +423,10 @@ const MyOrders = () => {
                           </div>
                           <div className="text-right">
                             <div className="font-medium">
-                              KES {parseFloat(item.price).toLocaleString()}
+                              KES {parseFloat(item.price || '0').toLocaleString()}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Qty: {item.quantity}
+                              Qty: {item.quantity || 0}
                             </div>
                           </div>
                         </div>
@@ -422,7 +443,10 @@ const MyOrders = () => {
                           Shipping Address
                         </h5>
                         <p className="text-sm text-muted-foreground">
-                          {order.shipping_address}
+                          {typeof order.shipping_address === 'string' 
+                            ? order.shipping_address 
+                            : (order.shipping_address as any)?.address || 'Address not available'
+                          }
                         </p>
                       </div>
                       

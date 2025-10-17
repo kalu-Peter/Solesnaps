@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Cart from "@/components/Cart";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Shoes from "./pages/Shoes";
 import NewArrivals from "./pages/NewArrivals";
@@ -54,7 +55,9 @@ const App = () => (
                 path="/my-orders"
                 element={
                   <ProtectedRoute>
-                    <MyOrders />
+                    <ErrorBoundary>
+                      <MyOrders />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
