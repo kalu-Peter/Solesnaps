@@ -1,17 +1,20 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import { CartItem, CartContextType, DeliveryLocation } from "@/types/cart";
+import { CartItem, CartContextType, DeliveryLocation, AppliedCoupon } from "@/types/cart";
 
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
   selectedDeliveryLocation?: DeliveryLocation;
   shippingCost: number;
+  appliedCoupon?: AppliedCoupon;
 }
 
 type CartAction =
   | { type: "ADD_ITEM"; payload: Omit<CartItem, "quantity"> }
   | { type: "REMOVE_ITEM"; payload: number }
   | { type: "UPDATE_QUANTITY"; payload: { id: number; quantity: number } }
+  | { type: "APPLY_COUPON"; payload: AppliedCoupon }
+  | { type: "REMOVE_COUPON" }
   | { type: "CLEAR_CART" }
   | { type: "OPEN_CART" }
   | { type: "CLOSE_CART" }
@@ -78,6 +81,19 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         items: [],
         selectedDeliveryLocation: undefined,
         shippingCost: 0,
+        appliedCoupon: undefined,
+      };
+
+    case "APPLY_COUPON":
+      return {
+        ...state,
+        appliedCoupon: action.payload,
+      };
+
+    case "REMOVE_COUPON":
+      return {
+        ...state,
+        appliedCoupon: undefined,
       };
 
     case "OPEN_CART":
@@ -171,6 +187,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     dispatch({ type: "CLOSE_CART" });
   };
 
+  const applyCoupon = (coupon: AppliedCoupon) => {
+    dispatch({ type: "APPLY_COUPON", payload: coupon });
+  };
+
+  const removeCoupon = () => {
+    dispatch({ type: "REMOVE_COUPON" });
+  };
+
   const totalItems = state.items.reduce(
     (total, item) => total + item.quantity,
     0
@@ -180,10 +204,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     return total + item.price * item.quantity;
   }, 0);
 
+  const couponDiscount = state.appliedCoupon?.discount_amount || 0;
+  const finalTotal = Math.max(0, totalPrice + state.shippingCost - couponDiscount);
+
   const value: CartContextType = {
     items: state.items,
     totalItems,
     totalPrice,
+    appliedCoupon: state.appliedCoupon,
+    couponDiscount,
+    finalTotal,
     isOpen: state.isOpen,
     selectedDeliveryLocation: state.selectedDeliveryLocation,
     setDeliveryLocation,
@@ -191,6 +221,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     addItem,
     removeItem,
     updateQuantity,
+    applyCoupon,
+    removeCoupon,
     clearCart,
     openCart,
     closeCart,

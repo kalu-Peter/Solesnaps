@@ -17,6 +17,7 @@ import { DeliveryLocation } from "@/types/cart";
 import CartItem from "./CartItem";
 import CheckoutDialog from "./CheckoutDialog";
 import AuthModal from "./AuthModal";
+import CouponInput from "./CouponInput";
 import { ShoppingBag, ShoppingCart, Trash2, CreditCard } from "lucide-react";
 
 export default function Cart() {
@@ -24,6 +25,9 @@ export default function Cart() {
     items,
     totalItems,
     totalPrice,
+    appliedCoupon,
+    couponDiscount,
+    finalTotal,
     isOpen,
     closeCart,
     clearCart,
@@ -206,10 +210,23 @@ export default function Cart() {
                       : "--"}
                   </span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Discount ({appliedCoupon.code})</span>
+                    <span className="text-green-600 font-medium">
+                      -Ksh {couponDiscount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
                 {selectedDeliveryLocation && selectedDeliveryLocation.pickup_status !== "active" && (
                   <div className="text-xs text-destructive">This location is not active for delivery.</div>
                 )}
               </div>
+
+              <Separator />
+
+              {/* Coupon Input */}
+              <CouponInput />
 
               <Separator />
 
@@ -223,7 +240,7 @@ export default function Cart() {
                     loadingPrices ? (
                       <span className="text-muted-foreground">Loading...</span>
                     ) : (
-                      `Ksh ${(calculatedTotalPrice + Number(shippingCost || 0)).toFixed(2)}`
+                      `Ksh ${(calculatedTotalPrice + Number(shippingCost || 0) - couponDiscount).toFixed(2)}`
                     )
                   ) : (
                     "--"
@@ -274,6 +291,8 @@ export default function Cart() {
             deliveryLocation={selectedDeliveryLocation}
             cartItems={items}
             currentPrices={currentPrices}
+            appliedCoupon={appliedCoupon}
+            couponDiscount={couponDiscount}
           />
         )}
 

@@ -17,6 +17,7 @@ import {
   MapPin,
   ShoppingBag,
   User,
+  Tag,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,6 +81,11 @@ const AdminLayout = () => {
       title: "Delivery Locations",
       href: "/admin/delivery-locations",
       icon: MapPin,
+    },
+    {
+      title: "Coupons",
+      href: "/admin/coupons",
+      icon: Tag,
     },
     {
       title: "Users",

@@ -20,10 +20,22 @@ export interface DeliveryLocation {
   pickup_status: string;
 }
 
+export interface AppliedCoupon {
+  id: number;
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  discount_amount: number;
+  description: string;
+}
+
 export interface CartContextType {
   items: CartItem[];
   totalItems: number;
   totalPrice: number;
+  appliedCoupon?: AppliedCoupon;
+  couponDiscount: number;
+  finalTotal: number;
   isOpen: boolean;
   selectedDeliveryLocation?: DeliveryLocation;
   setDeliveryLocation: (location: DeliveryLocation) => void;
@@ -31,6 +43,8 @@ export interface CartContextType {
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
   removeItem: (id: number) => void;
   updateQuantity: (id: number, quantity: number) => void;
+  applyCoupon: (coupon: AppliedCoupon) => void;
+  removeCoupon: () => void;
   clearCart: () => void;
   openCart: () => void;
   closeCart: () => void;

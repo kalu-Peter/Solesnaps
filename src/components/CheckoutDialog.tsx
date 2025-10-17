@@ -24,6 +24,12 @@ interface CheckoutDialogProps {
   deliveryLocation: DeliveryLocation;
   cartItems: any[];
   currentPrices: Record<number, number>;
+  appliedCoupon?: {
+    id: number;
+    code: string;
+    discount_amount: number;
+  };
+  couponDiscount: number;
 }
 
 type PaymentMethod = "mpesa" | "pay_on_delivery";
@@ -33,6 +39,9 @@ interface OrderData {
   payment_method: PaymentMethod;
   subtotal_amount: number;
   shipping_amount: number;
+  coupon_id?: number;
+  coupon_code?: string;
+  discount_amount: number;
   total_amount: number;
   order_items: Array<{
     product_id: number;
@@ -50,6 +59,8 @@ export default function CheckoutDialog({
   deliveryLocation,
   cartItems,
   currentPrices,
+  appliedCoupon,
+  couponDiscount,
 }: CheckoutDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -58,7 +69,7 @@ export default function CheckoutDialog({
   const { clearCart } = useCart();
   const { token, isAuthenticated } = useAuth();
 
-  const total = subtotal + shippingCost;
+  const total = subtotal + shippingCost - couponDiscount;
 
   const createOrder = async () => {
     setIsProcessing(true);
@@ -71,6 +82,9 @@ export default function CheckoutDialog({
         payment_method: paymentMethod,
         subtotal_amount: subtotal,
         shipping_amount: shippingCost,
+        coupon_id: appliedCoupon?.id,
+        coupon_code: appliedCoupon?.code,
+        discount_amount: couponDiscount,
         total_amount: total,
         order_items: cartItems.map(item => ({
           product_id: item.id,
@@ -168,6 +182,12 @@ export default function CheckoutDialog({
                 <span className="text-muted-foreground">Shipping</span>
                 <span>Ksh {shippingCost.toFixed(2)}</span>
               </div>
+              {appliedCoupon && couponDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount ({appliedCoupon.code})</span>
+                  <span>-Ksh {couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between font-medium">
                 <span>Total</span>
