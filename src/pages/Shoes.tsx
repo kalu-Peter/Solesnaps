@@ -413,7 +413,7 @@ const Shoes = () => {
 
           {/* Products Grid */}
           {loading ? (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="h-80 bg-muted animate-pulse rounded-lg"></div>
               ))}
@@ -423,7 +423,7 @@ const Shoes = () => {
               <p className="text-muted-foreground">Unable to load shoes. Please try again later.</p>
             </div>
           ) : (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             
               {shoes.map((shoe) => (
                 <ProductCard 

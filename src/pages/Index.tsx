@@ -119,10 +119,14 @@ const Index = () => {
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-foreground mb-4 sm:mb-6 max-w-2xl">
             Step Into <span className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] bg-clip-text text-transparent">Style & Tech</span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-xl">
+          <p className="text-base sm:text-lg md:text-xl text-muted mb-6 sm:mb-8 max-w-xl">
             Discover the perfect blend of fashion and technology. Quality products at unbeatable prices.
           </p>
-          <Button size="lg" className="bg-primary hover:bg-accent text-white group">
+          <Button 
+            size="lg" 
+            className="bg-primary hover:bg-accent text-white group"
+            onClick={() => navigate('/shoes')}
+          >
             Shop Now
             <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Button>
@@ -174,7 +178,7 @@ const Index = () => {
           </div>
           
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="h-80 bg-muted animate-pulse rounded-lg"></div>
               ))}
@@ -184,7 +188,7 @@ const Index = () => {
               <p className="text-muted-foreground">Unable to load products. Please try again later.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {products.map((product) => (
                 <ProductCard 
                   key={product.id}
