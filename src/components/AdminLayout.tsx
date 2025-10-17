@@ -125,19 +125,24 @@ const AdminLayout = () => {
           <Link
             key={item.href}
             to={item.href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
               isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground hover:bg-accent"
+                ? "bg-primary text-primary-foreground shadow-md"
+                : "text-foreground hover:text-primary hover:bg-primary/10 hover:shadow-sm"
             }`}
             onClick={() => setIsMobileMenuOpen(false)}
+            title={`Go to ${item.title}`}
           >
-            <Icon className="h-4 w-4" />
-            <span className="font-medium">{item.title}</span>
+            <Icon className={`h-5 w-5 transition-transform duration-200 ${
+              isActive ? "" : "group-hover:scale-110"
+            }`} />
+            <span className="font-medium transition-colors duration-200">{item.title}</span>
             {item.badge && (
               <Badge
                 variant={isActive ? "secondary" : "default"}
-                className="ml-auto text-xs"
+                className={`ml-auto text-xs transition-all duration-200 ${
+                  isActive ? "" : "group-hover:bg-primary group-hover:text-primary-foreground"
+                }`}
               >
                 {item.badge}
               </Badge>
@@ -169,18 +174,23 @@ const AdminLayout = () => {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 relative group ${
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/10 hover:shadow-sm"
                   }`}
+                  title={`Go to ${item.title}`}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.title}</span>
+                  <Icon className={`h-4 w-4 transition-transform duration-200 ${
+                    isActive ? "" : "group-hover:scale-110"
+                  }`} />
+                  <span className="transition-colors duration-200">{item.title}</span>
                   {item.badge && (
                     <Badge
                       variant={isActive ? "secondary" : "default"}
-                      className="text-xs"
+                      className={`text-xs transition-all duration-200 ${
+                        isActive ? "" : "group-hover:bg-primary group-hover:text-primary-foreground"
+                      }`}
                     >
                       {item.badge}
                     </Badge>
@@ -197,9 +207,10 @@ const AdminLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-8 w-8 rounded-full"
+                  className="relative h-8 w-8 rounded-full hover:ring-2 hover:ring-primary/20 transition-all duration-200"
+                  title={`${getFullName()} - Admin Profile`}
                 >
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-8 w-8 transition-transform duration-200 hover:scale-105">
                     <AvatarImage src={user?.avatar_url} alt={getFullName()} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {user ? getUserInitials(user.first_name, user.last_name) : "A"}
@@ -223,12 +234,12 @@ const AdminLayout = () => {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/">
+                  <Link to="/" className="cursor-pointer">
                     <ShoppingBag className="mr-2 h-4 w-4" />
                     <span>Back to Store</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -238,7 +249,12 @@ const AdminLayout = () => {
             {/* Mobile Menu Button */}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="lg:hidden hover:bg-primary/10 hover:text-primary transition-colors duration-200"
+                  title="Open navigation menu"
+                >
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
