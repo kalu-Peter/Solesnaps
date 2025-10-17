@@ -96,20 +96,36 @@ const getProducts = async (req, res) => {
         let qb = supabaseAdmin
           .from('products')
           .select('id, name, description, price, stock_quantity, brand, colors, sizes, gender, is_featured, is_active, created_at, updated_at, category:categories(id,name), product_images(id,url,alt_text,is_primary,sort_order)', { count: 'exact' })
+          .eq('is_active', true)
           .order(sortColumn, { ascending: sortDirection === 'asc' });
 
         // Apply filters where possible
         if (brand) qb = qb.ilike('brand', `%${brand}%`);
         if (min_price) qb = qb.gte('price', parseFloat(min_price));
         if (max_price) qb = qb.lte('price', parseFloat(max_price));
-        if (search) qb = qb.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+        if (search) {
+          // Apply search filter using simple ilike on name for now
+          qb = qb.ilike('name', `%${search}%`);
+        }
         if (color) qb = qb.contains('colors', [color]);
         if (size) qb = qb.contains('sizes', [size]);
 
         // Category filter by name: find category id first
         if (category) {
-          const { data: catData, error: catErr } = await supabaseAdmin.from('categories').select('id').ilike('name', `%${category}%`).limit(1).single();
-          if (!catErr && catData) qb = qb.eq('category_id', catData.id);
+          try {
+            const { data: catData, error: catErr } = await supabaseAdmin
+              .from('categories')
+              .select('id')
+              .ilike('name', `%${category}%`)
+              .limit(1)
+              .single();
+            if (!catErr && catData) {
+              qb = qb.eq('category_id', catData.id);
+            }
+          } catch (catError) {
+            console.warn('Category lookup failed:', catError.message);
+            // Continue without category filter
+          }
         }
 
         const { data, error, count } = await qb.range(from, to);
