@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import heroBanner from "@/assets/hero-banner.jpg";
+import heroBanner from "@/assets/B.png";
 import shoe1 from "@/assets/shoe-1.jpg";
 import shoe2 from "@/assets/shoe-2.jpg";
 import headphones from "@/assets/headphones.jpg";
