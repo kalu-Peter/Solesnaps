@@ -70,7 +70,7 @@ import { useToast } from '@/hooks/use-toast';
 
 // Types
 interface Category {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   image_url?: string;
@@ -79,18 +79,19 @@ interface Category {
 interface ProductImage {
   id: number;
   image_url: string;
+  url?: string; // Alternative URL property used by API response
   alt_text?: string;
   is_primary: boolean;
   sort_order: number;
 }
 
 interface Product {
-  id: number;
+  id: number | string;
   name: string;
   description?: string;
   price: string;
   stock_quantity: number;
-  category_id: number;
+  category_id: number | string;
   category_name?: string;
   brand: string;
   colors?: string[];

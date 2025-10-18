@@ -654,7 +654,7 @@ const getFeaturedProducts = async (req, res) => {
       products.map(async (product) => {
         const { data: images, error: imagesError } = await supabaseAdmin
           .from('product_images')
-          .select('id, url as image_url, alt_text, is_primary, sort_order')
+          .select('id, url, alt_text, is_primary, sort_order')
           .eq('product_id', product.id)
           .order('is_primary', { ascending: false })
           .order('sort_order', { ascending: true });
@@ -663,11 +663,17 @@ const getFeaturedProducts = async (req, res) => {
           console.error(`Error fetching images for product ${product.id}:`, imagesError);
         }
 
+        // Transform url to image_url for frontend compatibility
+        const transformedImages = (images || []).map(img => ({
+          ...img,
+          image_url: img.url
+        }));
+
         return {
           ...product,
           category_id: product.categories.id,
           category_name: product.categories.name,
-          images: images || []
+          images: transformedImages
         };
       })
     );
@@ -692,40 +698,64 @@ const getNewArrivals = async (req, res) => {
   try {
     const { limit = 20 } = req.query;
 
-    const result = await query(
-      `SELECT 
-        p.id, p.name, p.description, p.price, p.stock_quantity,
-        p.brand, p.colors, p.sizes, p.gender, p.is_featured, p.is_active,
-        p.created_at, p.updated_at,
-        c.name as category_name, c.id as category_id,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', pi.id,
-              'image_url', pi.url,
-              'alt_text', pi.alt_text,
-              'is_primary', pi.is_primary,
-              'sort_order', pi.sort_order
-            ) ORDER BY pi.is_primary DESC, pi.sort_order ASC
-          ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'::json
-        ) as images
-      FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN product_images pi ON p.id = pi.product_id
-      WHERE p.is_active = true 
-        AND p.created_at >= NOW() - INTERVAL '15 days'
-      GROUP BY p.id, c.id, c.name
-      ORDER BY p.created_at DESC
-      LIMIT $1`,
-      [limit]
+    // Calculate date 15 days ago
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    const isoDate = fifteenDaysAgo.toISOString();
+
+    // Get products created within last 15 days
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('products')
+      .select(`
+        id, name, description, price, stock_quantity,
+        brand, colors, sizes, gender, is_featured, is_active,
+        created_at, updated_at,
+        categories!inner(id, name)
+      `)
+      .eq('is_active', true)
+      .gte('created_at', isoDate)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (productsError) {
+      console.error('Error fetching new arrivals:', productsError);
+      throw productsError;
+    }
+
+    // Get images for each product
+    const productsWithImages = await Promise.all(
+      (products || []).map(async (product) => {
+        const { data: images, error: imagesError } = await supabaseAdmin
+          .from('product_images')
+          .select('id, url, alt_text, is_primary, sort_order')
+          .eq('product_id', product.id)
+          .order('is_primary', { ascending: false })
+          .order('sort_order', { ascending: true });
+
+        if (imagesError) {
+          console.error(`Error fetching images for product ${product.id}:`, imagesError);
+        }
+
+        // Transform url to image_url for frontend compatibility
+        const transformedImages = (images || []).map(img => ({
+          ...img,
+          image_url: img.url
+        }));
+
+        return {
+          ...product,
+          category_id: product.categories.id,
+          category_name: product.categories.name,
+          images: transformedImages
+        };
+      })
     );
 
     res.json({
       message: 'New arrivals retrieved successfully',
       data: {
-        products: result.rows,
-        count: result.rows.length
+        products: productsWithImages,
+        count: productsWithImages.length
       }
     });
   } catch (error) {

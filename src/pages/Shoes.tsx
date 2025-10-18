@@ -29,147 +29,8 @@ const Shoes = () => {
   const [shoes, setShoes] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
-
-  // Fallback shoes data for when API is not available
-  const fallbackShoes = [
-    {
-      id: 201,
-      name: "Sport Runner Pro",
-      description: "High-performance running shoe",
-      price: "11500.00",
-      stock_quantity: 25,
-      brand: "Nike",
-      colors: ["Black", "White"],
-      sizes: ["8", "9", "10", "11"],
-      images: [{ id: 1, image_url: shoe1, alt_text: "Sport Runner Pro", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 202,
-      name: "Urban Classic",
-      description: "Stylish casual shoe",
-      price: "10200.00",
-      stock_quantity: 30,
-      brand: "Adidas",
-      colors: ["Brown", "Tan"],
-      sizes: ["7", "8", "9", "10"],
-      images: [{ id: 2, image_url: shoe2, alt_text: "Urban Classic", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 203,
-      name: "Air Max Elite",
-      description: "Premium athletic shoe",
-      price: "16600.00",
-      stock_quantity: 20,
-      brand: "Nike",
-      colors: ["White", "Blue"],
-      sizes: ["8", "9", "10", "11", "12"],
-      images: [{ id: 3, image_url: shoe1, alt_text: "Air Max Elite", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 204,
-      name: "Street Walker",
-      description: "Urban style sneaker",
-      price: "12300.00",
-      stock_quantity: 15,
-      brand: "Puma",
-      colors: ["Black", "Gray"],
-      sizes: ["7", "8", "9", "10"],
-      images: [{ id: 4, image_url: shoe2, alt_text: "Street Walker", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: false,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 205,
-      name: "Performance Runner",
-      description: "Professional running shoe",
-      price: "20500.00",
-      stock_quantity: 12,
-      brand: "Asics",
-      colors: ["Blue", "Yellow"],
-      sizes: ["8", "9", "10", "11", "12"],
-      images: [{ id: 5, image_url: shoe1, alt_text: "Performance Runner", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 206,
-      name: "Casual Comfort",
-      description: "Everyday comfort shoe",
-      price: "8900.00",
-      stock_quantity: 35,
-      brand: "Sketchers",
-      colors: ["Brown", "Black"],
-      sizes: ["7", "8", "9", "10", "11"],
-      images: [{ id: 6, image_url: shoe2, alt_text: "Casual Comfort", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: false,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 207,
-      name: "Trail Explorer",
-      description: "Outdoor hiking shoe",
-      price: "24300.00",
-      stock_quantity: 8,
-      brand: "Merrill",
-      colors: ["Green", "Brown"],
-      sizes: ["8", "9", "10", "11", "12"],
-      images: [{ id: 7, image_url: shoe1, alt_text: "Trail Explorer", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 208,
-      name: "City Sprint",
-      description: "Urban running shoe",
-      price: "12800.00",
-      stock_quantity: 18,
-      brand: "New Balance",
-      colors: ["White", "Red"],
-      sizes: ["7", "8", "9", "10", "11"],
-      images: [{ id: 8, image_url: shoe2, alt_text: "City Sprint", is_primary: true, sort_order: 0 }],
-      category_name: "Shoes",
-      category_id: 1,
-      is_featured: false,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ];
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Handle URL parameters for gender filtering
   useEffect(() => {
@@ -183,61 +44,79 @@ const Shoes = () => {
     const fetchShoesAndCategories = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch categories to filter for shoe-related categories
+        // Fetch all categories first
         const categoriesResponse = await productService.getCategories();
         const allCategories = categoriesResponse.data.categories;
         
-        // Filter for shoe-related categories (you can adjust this logic)
+        // Filter for shoe-related categories
         const shoeCategories = allCategories.filter(cat => 
           cat.name.toLowerCase().includes('shoe') || 
           cat.name.toLowerCase().includes('sneaker') ||
           cat.name.toLowerCase().includes('boot') ||
           cat.name.toLowerCase().includes('sandal') ||
-          cat.name.toLowerCase().includes('slipper')
+          cat.name.toLowerCase().includes('slipper') ||
+          cat.name.toLowerCase().includes('footwear')
         );
         
         setCategories(shoeCategories);
 
-        // If we have shoe categories, fetch products from those categories
-        if (shoeCategories.length > 0) {
-          // For now, we'll fetch all products and filter on frontend
-          // In the future, you can modify the API to accept multiple categories
-          const productsResponse = await productService.getProducts({ 
-            limit: 50,
-            sort_by: 'created_at',
-            sort_order: 'desc'
-          });
-          
-          // Filter products that belong to shoe categories
-          let shoeProducts = productsResponse.data.products.filter(product =>
-            shoeCategories.some(cat => cat.id === product.category_id)
-          );
+        // Fetch all products and then filter
+        const productsResponse = await productService.getProducts({ 
+          limit: 100,
+          sort_by: 'created_at',
+          sort_order: 'desc'
+        });
+        
+        let filteredProducts = productsResponse.data.products;
 
-          // Apply gender filter if specified
-          const genderFilter = searchParams.get('gender');
-          if (genderFilter && ['male', 'female', 'unisex'].includes(genderFilter)) {
-            shoeProducts = shoeProducts.filter(product => 
-              product.gender === genderFilter
+        // Filter by shoe categories if we found any
+        if (shoeCategories.length > 0) {
+          filteredProducts = filteredProducts.filter(product =>
+            shoeCategories.some(cat => cat.id === product.category?.id)
+          );
+        }
+
+        // Apply gender filter if specified
+        const genderFilter = searchParams.get('gender');
+        if (genderFilter && ['male', 'female', 'unisex'].includes(genderFilter)) {
+          filteredProducts = filteredProducts.filter(product => 
+            product.gender === genderFilter
+          );
+        }
+
+        // Apply category filter if specified
+        if (selectedCategory !== 'all') {
+          const categoryToFilter = shoeCategories.find(cat => cat.id === selectedCategory);
+          if (categoryToFilter) {
+            filteredProducts = filteredProducts.filter(product => 
+              product.category?.id === categoryToFilter.id
             );
           }
-          
-          setShoes(shoeProducts.length > 0 ? shoeProducts : fallbackShoes as any);
-        } else {
-          // If no specific shoe categories found, use fallback
-          setShoes(fallbackShoes as any);
         }
+        
+        setShoes(filteredProducts);
       } catch (err) {
         console.error('Failed to fetch shoes:', err);
-        setError('Failed to load shoes');
-        setShoes(fallbackShoes as any);
+        setError('Failed to load shoes. Please try again later.');
+        
+        // Try to get any products as fallback
+        try {
+          const fallbackResponse = await productService.getProducts({ limit: 20 });
+          setShoes(fallbackResponse.data.products);
+          setError(null); // Clear error if fallback works
+        } catch (fallbackErr) {
+          console.error('Fallback fetch also failed:', fallbackErr);
+          setShoes([]); // Set empty array if everything fails
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchShoesAndCategories();
-  }, [searchParams]);
+  }, [searchParams, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -271,15 +150,20 @@ const Shoes = () => {
                 
                 {/* Category Filter */}
                 <div className="min-w-[140px]">
-                  <Select defaultValue="all">
+                  <Select 
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="sneakers">Sneakers</SelectItem>
-                      <SelectItem value="sandals">Sandals</SelectItem>
-                      <SelectItem value="dress">Dress Shoes</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -431,14 +315,20 @@ const Shoes = () => {
                   id={shoe.id}
                   name={shoe.name}
                   description={shoe.description}
-                  price={shoe.price}
+                  price={shoe.price.toString()}
                   stock_quantity={shoe.stock_quantity}
                   brand={shoe.brand}
-                  colors={typeof shoe.colors === 'string' ? shoe.colors.split(' ') : shoe.colors}
-                  sizes={typeof shoe.sizes === 'string' ? shoe.sizes.split(' ') : shoe.sizes}
-                  images={Array.isArray(shoe.images) ? shoe.images : []}
-                  category_name={shoe.category_name}
-                  category_id={shoe.category_id}
+                  colors={Array.isArray(shoe.colors) ? shoe.colors : []}
+                  sizes={Array.isArray(shoe.sizes) ? shoe.sizes : []}
+                  images={shoe.product_images?.map(img => ({
+                    id: parseInt(img.id) || 0,
+                    image_url: img.url,
+                    alt_text: img.alt_text,
+                    is_primary: img.is_primary,
+                    sort_order: img.sort_order
+                  })) || []}
+                  category_name={shoe.category?.name}
+                  category_id={shoe.category?.id}
                   is_featured={shoe.is_featured}
                   is_active={shoe.is_active}
                   created_at={shoe.created_at}

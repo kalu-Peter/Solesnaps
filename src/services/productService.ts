@@ -2,14 +2,14 @@
 const API_BASE_URL = '/api';
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   description?: string;
-  price: string;
+  price: number;
   stock_quantity: number;
   brand: string;
-  colors?: string[] | string;
-  sizes?: string[] | string;
+  colors?: string[];
+  sizes?: string[];
   gender?: string;
   images?: Array<{
     id: number;
@@ -18,8 +18,19 @@ export interface Product {
     is_primary: boolean;
     sort_order: number;
   }> | string;
+  product_images?: Array<{
+    id: string;
+    url: string;
+    alt_text?: string;
+    is_primary: boolean;
+    sort_order: number;
+  }>;
+  category?: {
+    id: string;
+    name: string;
+  };
   category_name?: string;
-  category_id?: number;
+  category_id?: string;
   is_featured: boolean;
   is_active: boolean;
   created_at: string;
@@ -171,7 +182,7 @@ export const productService = {
   },
 
   // Get categories
-  async getCategories(): Promise<{ message: string; data: { categories: Array<{ id: number; name: string; description?: string; image_url?: string }> } }> {
+  async getCategories(): Promise<{ message: string; data: { categories: Array<{ id: string; name: string; description?: string; image_url?: string }> } }> {
     const response = await fetch(`${API_BASE_URL}/products/categories`, {
       method: 'GET',
       headers: {

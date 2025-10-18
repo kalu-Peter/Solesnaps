@@ -5,7 +5,7 @@ import { ShoppingCart, Check } from "lucide-react";
 import { useState } from "react";
 
 interface ProductCardProps {
-  id: number;
+  id: number | string;
   name: string;
   description?: string;
   price: string;
@@ -21,7 +21,7 @@ interface ProductCardProps {
     sort_order: number;
   }>;
   category_name?: string;
-  category_id?: number;
+  category_id?: number | string;
   is_featured: boolean;
   is_active: boolean;
   created_at: string;
@@ -103,7 +103,7 @@ export default function ProductCard(props: ProductCardProps) {
     const numericOriginalPrice = originalPrice ? parseFloat(originalPrice.replace(/[^0-9.]/g, '')) : undefined;
     
     addItem({
-      id,
+      id: typeof id === 'string' ? parseInt(id.replace(/[^0-9]/g, '')) || Math.random() * 1000000 : id,
       name,
       price: numericPrice,
       originalPrice: numericOriginalPrice,

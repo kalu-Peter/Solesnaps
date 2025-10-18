@@ -20,6 +20,8 @@ const NewArrivals = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Function to calculate arrival date display
   const getArrivalDate = (createdAt: string) => {
@@ -41,9 +43,9 @@ const NewArrivals = () => {
       case 'newest':
         return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       case 'price-low':
-        return sorted.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        return sorted.sort((a, b) => a.price - b.price);
       case 'price-high':
-        return sorted.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+        return sorted.sort((a, b) => b.price - a.price);
       case 'category':
         return sorted.sort((a, b) => (a.category_name || '').localeCompare(b.category_name || ''));
       default:
@@ -51,29 +53,66 @@ const NewArrivals = () => {
     }
   };
 
-  // Fetch new arrivals from API
+  // Fetch new arrivals and categories from API
   useEffect(() => {
-    const fetchNewArrivals = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await productService.getNewArrivals(20);
-        setNewProducts(response.data.products);
+        
+        // Fetch categories
+        const categoriesResponse = await productService.getCategories();
+        setCategories(categoriesResponse.data.categories);
+        
+        // First try to get new arrivals
+        const response = await productService.getNewArrivals(50);
+        
+        if (response.data.products && response.data.products.length > 0) {
+          setNewProducts(response.data.products);
+        } else {
+          // If no new arrivals, fallback to recent products
+          const recentResponse = await productService.getProducts({
+            limit: 50,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+          });
+          setNewProducts(recentResponse.data.products);
+        }
       } catch (err) {
         console.error('Failed to fetch new arrivals:', err);
         setError('Failed to load new arrivals. Please try again later.');
+        
+        // Try to get any products as fallback
+        try {
+          const fallbackResponse = await productService.getProducts({ limit: 20 });
+          setNewProducts(fallbackResponse.data.products);
+          setError(null); // Clear error if fallback works
+        } catch (fallbackErr) {
+          console.error('Fallback fetch also failed:', fallbackErr);
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchNewArrivals();
+    fetchData();
   }, []);
 
-  // Sort products when sortBy or newProducts change
+  // Sort and filter products when sortBy, selectedCategory, or newProducts change
   useEffect(() => {
-    setSortedProducts(sortProducts(newProducts, sortBy));
-  }, [newProducts, sortBy]);
+    let filteredProducts = [...newProducts];
+    
+    // Apply category filter
+    if (selectedCategory !== 'all') {
+      const categoryId = selectedCategory;
+      filteredProducts = filteredProducts.filter(product => 
+        product.category_id?.toString() === categoryId || product.category?.id === categoryId
+      );
+    }
+    
+    // Sort the filtered products
+    setSortedProducts(sortProducts(filteredProducts, sortBy));
+  }, [newProducts, sortBy, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,15 +205,20 @@ const NewArrivals = () => {
                 
                 {/* Category Filter */}
                 <div className="min-w-[140px]">
-                  <Select defaultValue="all">
+                  <Select 
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="shoes">Shoes</SelectItem>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="featured">Featured</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -243,11 +287,11 @@ const NewArrivals = () => {
                     id={product.id}
                     name={product.name}
                     description={product.description}
-                    price={product.price}
+                    price={product.price.toString()}
                     stock_quantity={product.stock_quantity}
                     brand={product.brand}
-                    colors={typeof product.colors === 'string' ? product.colors.split(' ') : product.colors}
-                    sizes={typeof product.sizes === 'string' ? product.sizes.split(' ') : product.sizes}
+                    colors={Array.isArray(product.colors) ? product.colors : []}
+                    sizes={Array.isArray(product.sizes) ? product.sizes : []}
                     images={Array.isArray(product.images) ? product.images : []}
                     category_name={product.category_name}
                     category_id={product.category_id}

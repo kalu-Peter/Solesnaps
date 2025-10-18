@@ -195,11 +195,11 @@ const Index = () => {
                   id={product.id}
                   name={product.name}
                   description={product.description}
-                  price={product.price}
+                  price={product.price.toString()}
                   stock_quantity={product.stock_quantity}
                   brand={product.brand}
-                  colors={typeof product.colors === 'string' ? product.colors.split(' ') : product.colors}
-                  sizes={typeof product.sizes === 'string' ? product.sizes.split(' ') : product.sizes}
+                  colors={Array.isArray(product.colors) ? product.colors : []}
+                  sizes={Array.isArray(product.sizes) ? product.sizes : []}
                   images={Array.isArray(product.images) ? product.images : []}
                   category_name={product.category_name}
                   category_id={product.category_id}
