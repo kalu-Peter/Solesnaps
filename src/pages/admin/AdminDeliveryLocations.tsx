@@ -58,7 +58,7 @@ const AdminDeliveryLocations: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
       
-      const response = await fetch('http://localhost:5000/api/delivery', {
+      const response = await fetch('/api/delivery', {
         headers: {
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` })
@@ -112,7 +112,7 @@ const AdminDeliveryLocations: React.FC = () => {
         pickup_status: formData.pickup_status
       };
 
-      const response = await fetch('http://localhost:5000/api/delivery', {
+      const response = await fetch('/api/delivery', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,7 +161,7 @@ const AdminDeliveryLocations: React.FC = () => {
         pickup_status: formData.pickup_status
       };
 
-      const response = await fetch(`http://localhost:5000/api/delivery/${selectedLocation.id}`, {
+      const response = await fetch(`/api/delivery/${selectedLocation.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -202,7 +202,7 @@ const AdminDeliveryLocations: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
 
-      const response = await fetch(`http://localhost:5000/api/delivery/${locationToDelete.id}`, {
+      const response = await fetch(`/api/delivery/${locationToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
