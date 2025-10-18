@@ -200,7 +200,13 @@ const Index = () => {
                   brand={product.brand}
                   colors={Array.isArray(product.colors) ? product.colors : []}
                   sizes={Array.isArray(product.sizes) ? product.sizes : []}
-                  images={Array.isArray(product.images) ? product.images : []}
+                  images={product.product_images?.map(img => ({
+                    id: parseInt(img.id) || 0,
+                    image_url: img.url, // Map 'url' from API to 'image_url' expected by ProductCard
+                    alt_text: img.alt_text,
+                    is_primary: img.is_primary,
+                    sort_order: img.sort_order
+                  })) || []}
                   category_name={product.category_name}
                   category_id={product.category_id}
                   is_featured={product.is_featured}

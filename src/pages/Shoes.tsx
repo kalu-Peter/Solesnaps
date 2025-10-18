@@ -322,7 +322,7 @@ const Shoes = () => {
                   sizes={Array.isArray(shoe.sizes) ? shoe.sizes : []}
                   images={shoe.product_images?.map(img => ({
                     id: parseInt(img.id) || 0,
-                    image_url: img.url,
+                    image_url: img.url, // Map 'url' from API to 'image_url' expected by ProductCard
                     alt_text: img.alt_text,
                     is_primary: img.is_primary,
                     sort_order: img.sort_order

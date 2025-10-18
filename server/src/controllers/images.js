@@ -49,21 +49,6 @@ const upload = multer({
 const uploadProductImages = async (req, res) => {
   try {
     const { product_id } = req.body;
-
-    // Diagnostic logging: headers and user (if present)
-    try {
-      console.log('Images upload request headers:', {
-        host: req.get('host'),
-        origin: req.headers.origin,
-        authorization: req.headers.authorization ? 'present' : 'missing'
-      });
-    } catch (hdrErr) {
-      console.warn('Could not log headers:', hdrErr && hdrErr.message);
-    }
-
-    if (req.user) {
-      console.log('Authenticated user:', { id: req.user.id, email: req.user.email, role: req.user.role });
-    }
     
     if (!product_id) {
       return res.status(400).json({
@@ -83,7 +68,6 @@ const uploadProductImages = async (req, res) => {
     let uploadedImages = [];
     if (isSupabaseEnabled() && supabaseAdmin) {
       console.log('Images upload: supabase enabled, starting product lookup for', product_id);
-      console.log('Files received count:', Array.isArray(req.files) ? req.files.length : 0);
       const { data: prodData, error: prodErr } = await supabaseAdmin
         .from('products')
         .select('id')
@@ -92,11 +76,10 @@ const uploadProductImages = async (req, res) => {
         .single();
 
       if (prodErr || !prodData) {
-        console.warn('Images upload: product lookup failed', prodErr);
+        console.warn('Images upload: product lookup failed', prodErr && prodErr.message);
         return res.status(404).json({
           error: 'Product not found',
-          message: 'The specified product does not exist',
-          details: prodErr || null
+          message: 'The specified product does not exist'
         });
       }
 
@@ -109,7 +92,6 @@ const uploadProductImages = async (req, res) => {
         .order('sort_order', { ascending: false })
         .limit(1);
 
-      if (maxErr) console.warn('Images upload: max sort_order query error', maxErr);
       let currentMaxOrder = -1;
       if (!maxErr && Array.isArray(maxRows) && maxRows.length > 0) {
         currentMaxOrder = maxRows[0].sort_order || -1;
@@ -121,7 +103,6 @@ const uploadProductImages = async (req, res) => {
         .select('id', { count: 'exact', head: false })
         .eq('product_id', product_id);
 
-      if (existErr) console.warn('Images upload: existing images query error', existErr);
       const isFirstImage = (!existErr && Array.isArray(existingImages) && existingImages.length === 0) || (count === 0);
 
       // Insert image records into database using supabaseAdmin
@@ -146,7 +127,6 @@ const uploadProductImages = async (req, res) => {
 
         if (insertErr) {
           console.error('Images upload: insert error', insertErr);
-          // Include insertErr in response for debugging
           throw insertErr;
         }
 

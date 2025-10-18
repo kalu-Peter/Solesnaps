@@ -69,13 +69,13 @@ export default function ProductCard(props: ProductCardProps) {
     
     const imageUrl = imageToUse.image_url;
     
-    // If image URL is already absolute (starts with http), use it as is
+    // If image URL is already absolute (starts with http), use it as is but fix the port
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
+      // Replace any localhost port with 8080 (current backend port)
+      return imageUrl.replace(/localhost:\d+/, 'localhost:8080');
     }
     
     // If image URL is relative, construct full URL
-    // Use window.location.origin to get current protocol and host, then proxy to backend
     if (imageUrl.startsWith('/')) {
       return imageUrl; // Let the proxy handle it
     }
@@ -85,6 +85,16 @@ export default function ProductCard(props: ProductCardProps) {
   };
 
   const displayImage = getImageUrl();
+
+  // Debug logging for image URLs (can remove later)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`Product ${name}:`, {
+      hasImages: images && images.length > 0,
+      imageCount: images?.length || 0,
+      firstImageUrl: images?.[0]?.image_url,
+      displayImage
+    });
+  }
 
   // Use category_name from API or fallback to legacy category
   const displayCategory = category_name || legacyCategory || brand;
