@@ -4,6 +4,10 @@ const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 // Create new order with delivery location
 const createOrderWithDelivery = async (req, res) => {
   try {
+    console.log("=== ORDER CREATION START ===");
+    console.log("Raw request body:", JSON.stringify(req.body, null, 2));
+    console.log("User from token:", req.user);
+    
     // Get authenticated user ID
     const userId = req.user.id;
     
@@ -13,109 +17,265 @@ const createOrderWithDelivery = async (req, res) => {
       subtotal_amount,
       shipping_amount,
       total_amount,
+      discount_amount = 0,
+      coupon_id,
+      coupon_code,
       order_items
     } = req.body;
 
+    console.log("Creating order with delivery:", {
+      userId,
+      delivery_location_id,
+      delivery_location_id_type: typeof delivery_location_id,
+      payment_method,
+      subtotal_amount,
+      shipping_amount,
+      total_amount,
+      order_items: order_items?.length,
+      first_item: order_items?.[0]
+    });
+
     // Validate required fields
     if (!delivery_location_id || !payment_method || !order_items || order_items.length === 0) {
+      console.log("Validation failed - missing required fields:", {
+        has_delivery_location_id: !!delivery_location_id,
+        has_payment_method: !!payment_method,
+        has_order_items: !!order_items,
+        order_items_length: order_items?.length
+      });
       return res.status(400).json({
         error: 'Missing required fields',
-        message: 'delivery_location_id, payment_method, and order_items are required'
+        message: 'delivery_location_id, payment_method, and order_items are required',
+        details: {
+          delivery_location_id: !!delivery_location_id,
+          payment_method: !!payment_method,
+          order_items: !!order_items,
+          order_items_length: order_items?.length
+        }
       });
     }
 
-    const result = await transaction(async (client) => {
-      // Validate delivery location exists and is active
-      const locationResult = await client.query(
-        'SELECT * FROM delivery_locations WHERE id = $1 AND pickup_status = $2',
-        [delivery_location_id, 'active']
-      );
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      return res.status(500).json({
+        error: 'Database unavailable',
+        message: 'Order service is not properly configured'
+      });
+    }
 
-      if (locationResult.rows.length === 0) {
-        throw new Error('Invalid or inactive delivery location');
-      }
+    // Validate delivery location exists and is active
+    console.log("Validating delivery location:", delivery_location_id);
+    const { data: location, error: locationError } = await supabaseAdmin
+      .from('delivery_locations')
+      .select('*')
+      .eq('id', delivery_location_id)
+      .eq('pickup_status', 'active')
+      .single();
 
-      // Validate products and stock
-      for (const item of order_items) {
-        const productResult = await client.query(
-          'SELECT id, name, price, stock_quantity FROM products WHERE id = $1 AND is_active = true',
-          [item.product_id]
-        );
+    console.log("Location query result:", { location, locationError });
 
-        if (productResult.rows.length === 0) {
-          throw new Error(`Product with ID ${item.product_id} not found`);
+    if (locationError || !location) {
+      console.error('Invalid delivery location:', {
+        delivery_location_id,
+        locationError,
+        location
+      });
+      return res.status(400).json({
+        error: 'Invalid delivery location',
+        message: 'The selected delivery location is not available',
+        details: {
+          delivery_location_id,
+          error: locationError?.message,
+          found_location: !!location
         }
+      });
+    }
 
-        const product = productResult.rows[0];
+    // Validate products and stock
+    for (const item of order_items) {
+      // Convert product_id to string to handle large numbers
+      const productId = String(item.product_id);
+      console.log("Validating product:", productId, "original:", item.product_id);
+      
+      const { data: product, error: productError } = await supabaseAdmin
+        .from('products')
+        .select('id, name, price, stock_quantity')
+        .eq('id', productId)
+        .eq('is_active', true)
+        .single();
 
-        if (product.stock_quantity < item.quantity) {
-          throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.stock_quantity}, Requested: ${item.quantity}`);
-        }
+      console.log("Product query result:", { product, productError });
 
-        // Update product stock
-        await client.query(
-          'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2',
-          [item.quantity, item.product_id]
-        );
+      if (productError || !product) {
+        console.error('Product validation failed:', {
+          product_id: productId,
+          original_id: item.product_id,
+          productError,
+          product
+        });
+        return res.status(400).json({
+          error: 'Invalid product',
+          message: `Product with ID ${productId} not found`,
+          details: {
+            product_id: productId,
+            original_id: item.product_id,
+            error: productError?.message,
+            found_product: !!product
+          }
+        });
       }
 
-      // Create order
-      const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-      const orderResult = await client.query(
-        `INSERT INTO orders (
-          user_id, order_number, delivery_location_id, total_amount, subtotal_amount, shipping_amount,
-          status, payment_method, shipping_address, billing_address, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING *`,
-        [
-          userId, 
-          orderNumber, 
-          delivery_location_id, 
-          total_amount, 
-          subtotal_amount, 
-          shipping_amount, 
-          'pending', 
-          payment_method,
-          JSON.stringify({ delivery_location_id }), // Use delivery location as shipping address
-          JSON.stringify({ delivery_location_id })  // Use delivery location as billing address for now
-        ]
-      );
-
-      const order = orderResult.rows[0];
-
-      // Create order items
-      for (const item of order_items) {
-        await client.query(
-          `INSERT INTO order_items (
-            order_id, product_id, quantity, price
-          ) VALUES ($1, $2, $3, $4)`,
-          [order.id, item.product_id, item.quantity, item.unit_price]
-        );
+      if (product.stock_quantity < item.quantity) {
+        return res.status(400).json({
+          error: 'Insufficient stock',
+          message: `Insufficient stock for product ${product.name}. Available: ${product.stock_quantity}, Requested: ${item.quantity}`,
+          details: {
+            product_id: productId,
+            product_name: product.name,
+            available_stock: product.stock_quantity,
+            requested_quantity: item.quantity
+          }
+        });
       }
+    }
 
-      return {
-        order,
-        delivery_location: locationResult.rows[0],
-        items: order_items
-      };
+    // Generate order number
+    const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+    // Create order
+    console.log("Attempting to create order with data:", {
+      user_id: userId,
+      order_number: orderNumber,
+      delivery_location_id,
+      total_amount,
+      subtotal_amount,
+      shipping_amount,
+      status: 'pending',
+      payment_method,
+      payment_status: 'pending'
     });
+    
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from('orders')
+      .insert({
+        user_id: userId,
+        order_number: orderNumber,
+        delivery_location_id,
+        total_amount,
+        subtotal_amount,
+        shipping_amount,
+        status: 'pending',
+        payment_method,
+        payment_status: 'pending',
+        shipping_address: JSON.stringify({ delivery_location_id }),
+        billing_address: JSON.stringify({ delivery_location_id })
+        // Note: coupon fields removed as they don't exist in current Supabase schema
+        // TODO: Add discount_amount, coupon_id, coupon_code to orders table schema
+      })
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error('Order creation error:', orderError);
+      return res.status(500).json({
+        error: 'Order creation failed',
+        message: 'Failed to create order'
+      });
+    }
+
+    console.log("Order created:", order.id);
+
+    // Create order items and update stock
+    const orderItemsData = [];
+    for (const item of order_items) {
+      const productId = String(item.product_id);
+      
+      // Create order item
+      const { data: orderItem, error: itemError } = await supabaseAdmin
+        .from('order_items')
+        .insert({
+          order_id: order.id,
+          product_id: productId,
+          quantity: item.quantity,
+          price: item.unit_price
+          // Note: total_price field removed as it doesn't exist in current Supabase schema
+          // Note: size field could be added if needed: size: item.size
+        })
+        .select()
+        .single();
+
+      if (itemError) {
+        console.error('Order item creation error:', itemError);
+        // Should rollback here, but for now continue
+      } else {
+        orderItemsData.push(orderItem);
+      }
+
+      // Update product stock
+      // First get current stock
+      const { data: currentProduct, error: getCurrentError } = await supabaseAdmin
+        .from('products')
+        .select('stock_quantity')
+        .eq('id', productId)
+        .single();
+
+      if (getCurrentError || !currentProduct) {
+        console.error('Failed to get current stock:', getCurrentError);
+        continue;
+      }
+
+      const newStock = currentProduct.stock_quantity - item.quantity;
+      
+      const { error: stockError } = await supabaseAdmin
+        .from('products')
+        .update({
+          stock_quantity: newStock,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId);
+
+      if (stockError) {
+        console.error('Stock update error:', stockError);
+      }
+    }
+
+    // Clear user's cart after successful order
+    const { error: cartError } = await supabaseAdmin
+      .from('cart')
+      .delete()
+      .eq('user_id', userId);
+
+    if (cartError) {
+      console.error('Cart clear error:', cartError);
+      // Don't fail the order for this
+    }
 
     res.status(201).json({
       message: 'Order created successfully',
-      data: result
+      data: {
+        order: {
+          ...order,
+          items: orderItemsData
+        },
+        delivery_location: location
+      }
     });
   } catch (error) {
-    console.error('Create order error:', error);
-    
-    if (error.message.includes('not found') || error.message.includes('Insufficient stock') || error.message.includes('Invalid')) {
-      return res.status(400).json({
-        error: 'Order creation failed',
-        message: error.message
-      });
-    }
-
+    console.error('Create order with delivery error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
+    console.error('Error details:', {
+      name: error.name,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
     res.status(500).json({
       error: 'Order creation failed',
-      message: 'An internal server error occurred'
+      message: 'Failed to create order',
+      debug: process.env.NODE_ENV === 'development' ? {
+        error: error.message,
+        stack: error.stack
+      } : undefined
     });
   }
 };

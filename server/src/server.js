@@ -19,6 +19,7 @@ const imageRoutes = require('./routes/images');
 const deliveryRoutes = require('./routes/delivery');
 const adminRoutes = require('./routes/admin');
 const debugRoutes = require('./routes/debug');
+const couponsRoutes = require('./routes/coupons');
 
 const app = express();
 const PREFERRED_PORT = parseInt(process.env.PORT) || 8080;
@@ -89,6 +90,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/coupons', couponsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/admin', adminRoutes);

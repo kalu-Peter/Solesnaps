@@ -1,5 +1,5 @@
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   description?: string;
@@ -25,12 +25,12 @@ export async function fetchProductById(id: number): Promise<Product> {
   return data.data.product;
 }
 
-export async function fetchProductPrices(productIds: number[]): Promise<Record<number, number>> {
+export async function fetchProductPrices(productIds: string[]): Promise<Record<string, number>> {
   if (productIds.length === 0) return {};
   
   try {
     const products = await fetchProducts();
-    const priceMap: Record<number, number> = {};
+    const priceMap: Record<string, number> = {};
     
     products.forEach(product => {
       if (productIds.includes(product.id)) {

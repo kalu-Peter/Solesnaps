@@ -25,7 +25,7 @@ const Index = () => {
   // Fallback products for when API is not available
   const fallbackProducts = [
     { 
-      id: 1, 
+      id: "550e8400-e29b-41d4-a716-446655440001", // Use UUID format
       name: "Sport Runner Pro", 
       description: "High-performance running shoe",
       price: "11500.00", 
@@ -41,14 +41,14 @@ const Index = () => {
         sort_order: 0 
       }],
       category_name: "Shoes",
-      category_id: 1,
+      category_id: "550e8400-e29b-41d4-a716-446655440100",
       is_featured: true,
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     { 
-      id: 2, 
+      id: "550e8400-e29b-41d4-a716-446655440002", // Use UUID format
       name: "Urban Classic", 
       description: "Stylish casual shoe",
       price: "10200.00", 
@@ -64,7 +64,7 @@ const Index = () => {
         sort_order: 0 
       }],
       category_name: "Shoes",
-      category_id: 1,
+      category_id: "550e8400-e29b-41d4-a716-446655440100",
       is_featured: true,
       is_active: true,
       created_at: new Date().toISOString(),

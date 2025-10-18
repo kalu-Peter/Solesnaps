@@ -113,7 +113,7 @@ export default function ProductCard(props: ProductCardProps) {
     const numericOriginalPrice = originalPrice ? parseFloat(originalPrice.replace(/[^0-9.]/g, '')) : undefined;
     
     addItem({
-      id: typeof id === 'string' ? parseInt(id.replace(/[^0-9]/g, '')) || Math.random() * 1000000 : id,
+      id: String(id), // Ensure ID is a string
       name,
       price: numericPrice,
       originalPrice: numericOriginalPrice,

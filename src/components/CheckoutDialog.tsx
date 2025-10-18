@@ -23,7 +23,7 @@ interface CheckoutDialogProps {
   shippingCost: number;
   deliveryLocation: DeliveryLocation;
   cartItems: any[];
-  currentPrices: Record<number, number>;
+  currentPrices: Record<string, number>;
   appliedCoupon?: {
     id: number;
     code: string;
@@ -35,7 +35,7 @@ interface CheckoutDialogProps {
 type PaymentMethod = "mpesa" | "pay_on_delivery";
 
 interface OrderData {
-  delivery_location_id: number;
+  delivery_location_id: string;
   payment_method: PaymentMethod;
   subtotal_amount: number;
   shipping_amount: number;
@@ -44,7 +44,7 @@ interface OrderData {
   discount_amount: number;
   total_amount: number;
   order_items: Array<{
-    product_id: number;
+    product_id: string;
     quantity: number;
     unit_price: number;
     total_price: number;

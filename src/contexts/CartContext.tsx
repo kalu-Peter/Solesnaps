@@ -11,8 +11,8 @@ interface CartState {
 
 type CartAction =
   | { type: "ADD_ITEM"; payload: Omit<CartItem, "quantity"> }
-  | { type: "REMOVE_ITEM"; payload: number }
-  | { type: "UPDATE_QUANTITY"; payload: { id: number; quantity: number } }
+  | { type: "REMOVE_ITEM"; payload: string }
+  | { type: "UPDATE_QUANTITY"; payload: { id: string; quantity: number } }
   | { type: "APPLY_COUPON"; payload: AppliedCoupon }
   | { type: "REMOVE_COUPON" }
   | { type: "CLEAR_CART" }
@@ -24,10 +24,14 @@ type CartAction =
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case "SET_DELIVERY_LOCATION":
+      console.log("Setting delivery location:", action.payload);
+      console.log("Shopping amount from location:", action.payload.shopping_amount);
+      const shippingCost = Number(action.payload.shopping_amount);
+      console.log("Parsed shipping cost:", shippingCost);
       return {
         ...state,
         selectedDeliveryLocation: action.payload,
-        shippingCost: Number(action.payload.shopping_amount),
+        shippingCost: shippingCost,
       };
     case "ADD_ITEM": {
       const existingItem = state.items.find(
@@ -147,9 +151,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        dispatch({ type: "LOAD_CART", payload: parsedCart });
+        // Ensure all cart item IDs are strings to handle UUID compatibility
+        const validatedCart = parsedCart.map((item: any) => ({
+          ...item,
+          id: String(item.id) // Convert any numeric IDs to strings
+        }));
+        console.log("Loading cart from localStorage, validating IDs:", validatedCart.map((item: any) => ({ id: item.id, name: item.name })));
+        dispatch({ type: "LOAD_CART", payload: validatedCart });
       } catch (error) {
         console.error("Error loading cart from localStorage:", error);
+        // Clear invalid cart data
+        localStorage.removeItem("techstyle-cart");
       }
     }
   }, []);
@@ -160,23 +172,31 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   }, [state.items]);
 
   const addItem = (item: Omit<CartItem, "quantity">) => {
-    dispatch({ type: "ADD_ITEM", payload: item });
+    // Ensure ID is always a string for UUID compatibility
+    const validatedItem = {
+      ...item,
+      id: String(item.id)
+    };
+    console.log("Adding item to cart with validated ID:", validatedItem.id, "name:", validatedItem.name);
+    dispatch({ type: "ADD_ITEM", payload: validatedItem });
   };
 
   const setDeliveryLocation = (location: DeliveryLocation) => {
     dispatch({ type: "SET_DELIVERY_LOCATION", payload: location });
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: string) => {
     dispatch({ type: "REMOVE_ITEM", payload: id });
   };
 
-  const updateQuantity = (id: number, quantity: number) => {
+  const updateQuantity = (id: string, quantity: number) => {
     dispatch({ type: "UPDATE_QUANTITY", payload: { id, quantity } });
   };
 
   const clearCart = () => {
     dispatch({ type: "CLEAR_CART" });
+    // Also clear localStorage to reset any invalid data
+    localStorage.removeItem("techstyle-cart");
   };
 
   const openCart = () => {

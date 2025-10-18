@@ -23,7 +23,7 @@ export interface Order {
   payment_status?: string;
   created_at: string;
   updated_at: string;
-  delivery_location_id?: number;
+  delivery_location_id?: string;
   tracking_number?: string;
   user_name?: string;
   user_email?: string;

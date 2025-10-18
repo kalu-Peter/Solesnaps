@@ -1,6 +1,6 @@
 
 export interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   originalPrice?: number;
@@ -12,7 +12,7 @@ export interface CartItem {
 }
 
 export interface DeliveryLocation {
-  id: number;
+  id: string;
   city_name: string;
   shopping_amount: number;
   pickup_location: string;
@@ -41,8 +41,8 @@ export interface CartContextType {
   setDeliveryLocation: (location: DeliveryLocation) => void;
   shippingCost: number;
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
-  removeItem: (id: number) => void;
-  updateQuantity: (id: number, quantity: number) => void;
+  removeItem: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   applyCoupon: (coupon: AppliedCoupon) => void;
   removeCoupon: () => void;
   clearCart: () => void;

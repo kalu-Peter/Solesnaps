@@ -39,7 +39,7 @@ export default function Cart() {
   const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [currentPrices, setCurrentPrices] = useState<Record<number, number>>({});
+  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -52,6 +52,8 @@ export default function Cart() {
       fetchDeliveryLocations()
         .then((locations) => {
           console.log("Fetched delivery locations:", locations);
+          console.log("First location structure:", locations[0]);
+          console.log("First location id type:", typeof locations[0]?.id);
           setDeliveryLocations(locations);
         })
         .catch((error) => {
@@ -156,8 +158,16 @@ export default function Cart() {
                     className="w-full border rounded-md px-2 py-1 text-sm"
                     value={selectedDeliveryLocation?.id || ""}
                     onChange={e => {
-                      const loc = deliveryLocations.find(l => l.id === Number(e.target.value));
-                      if (loc) setDeliveryLocation(loc);
+                      console.log("Selected value:", e.target.value, "type:", typeof e.target.value);
+                      console.log("Available locations:", deliveryLocations.map(l => ({ id: l.id, name: l.city_name })));
+                      const loc = deliveryLocations.find(l => l.id === e.target.value);
+                      console.log("Selected delivery location:", loc);
+                      if (loc) {
+                        console.log("Setting delivery location with shopping_amount:", loc.shopping_amount);
+                        setDeliveryLocation(loc);
+                      } else {
+                        console.log("No matching location found for value:", e.target.value);
+                      }
                     }}
                   >
                     <option value="">Select a location...</option>
