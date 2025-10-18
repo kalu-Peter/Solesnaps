@@ -9,6 +9,7 @@ require('express-async-errors');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { testConnection } = require('./config/database');
+const { findAvailablePort, getPortProcess } = require('./utils/portUtils');
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
@@ -17,9 +18,10 @@ const userRoutes = require('./routes/users');
 const imageRoutes = require('./routes/images');
 const deliveryRoutes = require('./routes/delivery');
 const adminRoutes = require('./routes/admin');
+const debugRoutes = require('./routes/debug');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PREFERRED_PORT = parseInt(process.env.PORT) || 8080;
 // Restart trigger
 
 // Security middleware
@@ -91,6 +93,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', imageRoutes);
+app.use('/api/_debug', debugRoutes);
 
 // Root endpoint
 app.get('/api', (req, res) => {
@@ -182,6 +185,25 @@ const startServer = async () => {
       console.warn('⚠️ Please ensure PostgreSQL is running and the database exists.');
     }
 
+    // Find available port
+    let PORT;
+    try {
+      PORT = await findAvailablePort(PREFERRED_PORT);
+      
+      if (PORT !== PREFERRED_PORT) {
+        console.log(`⚠️  Port ${PREFERRED_PORT} is in use, using port ${PORT} instead`);
+        
+        // Try to get information about what's using the preferred port
+        const processInfo = await getPortProcess(PREFERRED_PORT);
+        if (processInfo) {
+          console.log(`🔍 Port ${PREFERRED_PORT} is being used by: ${processInfo}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Could not find available port:', error.message);
+      process.exit(1);
+    }
+
     // Start HTTP server
     const server = app.listen(PORT, () => {
       console.log(`
@@ -191,6 +213,42 @@ const startServer = async () => {
 🔗 API Base: http://localhost:${PORT}/api
 💾 Database: PostgreSQL on port ${process.env.DB_PORT || '5054'}
       `);
+    });
+
+    // Handle server startup errors
+    server.on('error', async (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is still in use. This shouldn't happen with our port checking logic.`);
+        console.error('❌ There might be a race condition or another server starting up.');
+        
+        // Try to find another port as fallback
+        try {
+          console.log('🔄 Attempting to find another available port...');
+          const fallbackPort = await findAvailablePort(PORT + 1);
+          console.log(`🆘 Trying fallback port: ${fallbackPort}`);
+          
+          const fallbackServer = app.listen(fallbackPort, () => {
+            console.log(`
+🚀 TechStyle API Server Started (Fallback)
+📍 Environment: ${process.env.NODE_ENV || 'development'}
+🌐 Server: http://localhost:${fallbackPort}
+🔗 API Base: http://localhost:${fallbackPort}/api
+💾 Database: PostgreSQL on port ${process.env.DB_PORT || '5054'}
+            `);
+          });
+          
+          const shutdown = gracefulShutdown(fallbackServer);
+          process.on('SIGTERM', () => shutdown('SIGTERM'));
+          process.on('SIGINT', () => shutdown('SIGINT'));
+          
+        } catch (fallbackError) {
+          console.error('❌ Could not start server on any port:', fallbackError.message);
+          process.exit(1);
+        }
+      } else {
+        console.error('❌ Server startup error:', error);
+        process.exit(1);
+      }
     });
 
     // Handle graceful shutdown

@@ -25,6 +25,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   getFullName: () => string;
+  refreshToken: () => Promise<boolean>;
   login: (
     email: string,
     password: string
@@ -86,37 +87,94 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const storedUser = localStorage.getItem("auth_user");
 
         if (storedToken && storedUser) {
+          // Parse stored user data
+          const userData = JSON.parse(storedUser);
+          
+          // Set token and user immediately for immediate UI update
           setToken(storedToken);
+          setUser(userData);
 
           // Verify token is still valid by fetching user profile
-          const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-            headers: {
-              Authorization: `Bearer ${storedToken}`,
-              "Content-Type": "application/json",
-            },
-          });
+          try {
+            const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+              headers: {
+                Authorization: `Bearer ${storedToken}`,
+                "Content-Type": "application/json",
+              },
+            });
 
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          } else {
-            // Token is invalid, clear stored data
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("auth_user");
-            setToken(null);
-            setUser(null);
+            if (response.ok) {
+              const data = await response.json();
+              setUser(data.user);
+              // Update localStorage with fresh user data
+              localStorage.setItem("auth_user", JSON.stringify(data.user));
+            } else if (response.status === 401) {
+              // Token expired, try to refresh
+              const refreshToken = localStorage.getItem("refresh_token");
+              if (refreshToken) {
+                const refreshSuccess = await attemptTokenRefresh(refreshToken);
+                if (!refreshSuccess) {
+                  clearAuthData();
+                }
+              } else {
+                clearAuthData();
+              }
+            } else {
+              // Other error, clear data
+              clearAuthData();
+            }
+          } catch (profileError) {
+            console.error("Profile verification error:", profileError);
+            // Network error - keep existing token but don't clear it
+            // User might be offline
           }
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
-        // Clear invalid stored data
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("auth_user");
-        setToken(null);
-        setUser(null);
+        clearAuthData();
       } finally {
         setIsLoading(false);
       }
+    };
+
+    const attemptTokenRefresh = async (refreshToken: string): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const { user: userData, tokens } = data;
+
+          setUser(userData);
+          setToken(tokens.access_token);
+
+          // Update localStorage
+          localStorage.setItem("auth_token", tokens.access_token);
+          localStorage.setItem("auth_user", JSON.stringify(userData));
+          localStorage.setItem("refresh_token", tokens.refresh_token);
+
+          return true;
+        } else {
+          return false;
+        }
+      } catch (error) {
+        console.error("Token refresh error:", error);
+        return false;
+      }
+    };
+
+    const clearAuthData = () => {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("refresh_token");
+      setToken(null);
+      setUser(null);
     };
 
     initAuth();
@@ -312,6 +370,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshToken = async (): Promise<boolean> => {
+    const storedRefreshToken = localStorage.getItem("refresh_token");
+    if (!storedRefreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: storedRefreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const { user: userData, tokens } = data;
+
+        setUser(userData);
+        setToken(tokens.access_token);
+
+        // Update localStorage
+        localStorage.setItem("auth_token", tokens.access_token);
+        localStorage.setItem("auth_user", JSON.stringify(userData));
+        localStorage.setItem("refresh_token", tokens.refresh_token);
+
+        return true;
+      } else {
+        // Refresh failed, clear all auth data
+        logout();
+        return false;
+      }
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      logout();
+      return false;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -345,6 +443,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAdmin,
     isLoading,
     getFullName: () => getFullName(user),
+    refreshToken,
     login,
     register,
     updateProfile,

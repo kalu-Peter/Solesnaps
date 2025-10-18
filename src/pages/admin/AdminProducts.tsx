@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import useAuthenticatedFetch from "@/hooks/useAuthenticatedFetch";
 import {
   Card,
   CardContent,
@@ -117,6 +119,8 @@ interface ProductFormData {
 }
 
 const AdminProducts = () => {
+  const { token, isAuthenticated } = useAuth();
+  const authenticatedFetch = useAuthenticatedFetch();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -178,7 +182,6 @@ const AdminProducts = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
       
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -191,18 +194,7 @@ const AdminProducts = () => {
         if (category) params.append('category', category.name);
       }
 
-      // Prepare headers - only include Authorization if token exists and is valid
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token && token !== 'null' && token.trim() !== '') {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`/admin/products?${params}`, {
-        headers: headers,
-      });
+      const response = await authenticatedFetch(`/admin/products?${params}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -226,31 +218,51 @@ const AdminProducts = () => {
   const createProduct = async () => {
     try {
       setIsSubmitting(true);
-      const token = localStorage.getItem('auth_token');
+
+      // Validate required fields
+      if (!formData.name.trim()) {
+        throw new Error('Product name is required');
+      }
+      if (!formData.price || parseFloat(formData.price) <= 0) {
+        throw new Error('Valid price is required');
+      }
+      if (!formData.stock_quantity || parseInt(formData.stock_quantity) < 0) {
+        throw new Error('Valid stock quantity is required');
+      }
+      if (!formData.category_id) {
+        throw new Error('Category selection is required');
+      }
+      
+      // For UUID category IDs, don't convert to integer
+      const categoryId = formData.category_id;
+      if (!categoryId || categoryId.trim() === '' || categoryId === 'none') {
+        console.log('Category validation failed:', { categoryId, categories: categories.length, formData: formData.category_id });
+        throw new Error('Please select a valid category from the dropdown');
+      }
+      
+      if (!formData.brand.trim()) {
+        throw new Error('Brand is required');
+      }
 
       const productData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         stock_quantity: parseInt(formData.stock_quantity),
-        category_id: parseInt(formData.category_id),
+        category_id: categoryId,
         brand: formData.brand.trim(),
-        colors: formData.colors,
-        sizes: formData.sizes,
-        images: [], // Required by validation - images will be uploaded separately
+        colors: formData.colors.filter(c => c.trim()),
+        sizes: formData.sizes.filter(s => s.trim()),
+        images: [], // Add empty images array to prevent validation error
         is_featured: formData.is_featured,
-        gender: formData.gender === "none" ? undefined : formData.gender, // Only include valid gender values
+        gender: formData.gender === "none" ? null : formData.gender,
       };
 
       console.log('Creating product with data:', productData);
 
       // Create product first
-      const response = await fetch('/admin/products', {
+      const response = await authenticatedFetch('/admin/products', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(productData),
       });
 
@@ -309,27 +321,47 @@ const AdminProducts = () => {
 
     try {
       setIsSubmitting(true);
-      const token = localStorage.getItem('auth_token');
+
+      // Validate required fields
+      if (!formData.name.trim()) {
+        throw new Error('Product name is required');
+      }
+      if (!formData.price || parseFloat(formData.price) <= 0) {
+        throw new Error('Valid price is required');
+      }
+      if (!formData.stock_quantity || parseInt(formData.stock_quantity) < 0) {
+        throw new Error('Valid stock quantity is required');
+      }
+      if (!formData.category_id) {
+        throw new Error('Category selection is required');
+      }
+      
+      // For UUID category IDs, don't convert to integer
+      const categoryId = formData.category_id;
+      if (!categoryId || categoryId.trim() === '') {
+        throw new Error('Please select a valid category');
+      }
+      
+      if (!formData.brand.trim()) {
+        throw new Error('Brand is required');
+      }
 
       const productData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         stock_quantity: parseInt(formData.stock_quantity),
-        category_id: parseInt(formData.category_id),
+        category_id: categoryId,
         brand: formData.brand.trim(),
-        colors: formData.colors,
-        sizes: formData.sizes,
+        colors: formData.colors.filter(c => c.trim()),
+        sizes: formData.sizes.filter(s => s.trim()),
+        images: [], // Add empty images array to prevent validation error
         is_featured: formData.is_featured,
-        gender: formData.gender === "none" ? undefined : formData.gender,
+        gender: formData.gender === "none" ? null : formData.gender,
       };
 
-      const response = await fetch(`/admin/products/${selectedProduct.id}`, {
+      const response = await authenticatedFetch(`/admin/products/${selectedProduct.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(productData),
       });
 
@@ -363,13 +395,8 @@ const AdminProducts = () => {
     if (!productToDelete) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
-
-      const response = await fetch(`/admin/products/${productToDelete.id}`, {
+      const response = await authenticatedFetch(`/admin/products/${productToDelete.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {

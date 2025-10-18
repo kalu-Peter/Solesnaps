@@ -131,8 +131,17 @@ const validateCreateProduct = [
     .isInt({ min: 0 })
     .withMessage('Stock quantity must be a non-negative integer'),
     
+  // Accept either integer IDs or UUID strings for category_id
   body('category_id')
-    .isInt({ min: 1 })
+    .custom((value) => {
+      if (value === undefined || value === null) return false;
+      // If it's a number-like value (e.g., '123' or 123)
+      if (Number.isInteger(Number(value)) && Number(value) >= 1) return true;
+      // UUID v4 format check
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (typeof value === 'string' && uuidRegex.test(value)) return true;
+      return false;
+    })
     .withMessage('Please provide a valid category ID'),
     
   body('brand')
@@ -188,9 +197,16 @@ const validateUpdateProduct = [
     .isInt({ min: 0 })
     .withMessage('Stock quantity must be a non-negative integer'),
     
+  // Accept either integer IDs or UUID strings for optional category_id
   body('category_id')
     .optional()
-    .isInt({ min: 1 })
+    .custom((value) => {
+      if (value === undefined || value === null) return false;
+      if (Number.isInteger(Number(value)) && Number(value) >= 1) return true;
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (typeof value === 'string' && uuidRegex.test(value)) return true;
+      return false;
+    })
     .withMessage('Please provide a valid category ID'),
     
   body('brand')

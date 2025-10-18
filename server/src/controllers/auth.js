@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
+const { supabaseAdmin, supabase, isSupabaseEnabled } = require('../config/supabase');
 const { generateAccessToken, generateRefreshToken } = require('../middleware/auth');
 
 // Register a new user
@@ -110,8 +110,9 @@ const login = async (req, res) => {
       // Use Supabase for authentication
       console.log('Authenticating user with Supabase...');
       
-      // First, authenticate with Supabase Auth
-      const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+      // First, authenticate with Supabase Auth using the anon client so we don't
+      // override the admin client's auth session (service role must remain intact).
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
       });

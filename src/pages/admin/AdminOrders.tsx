@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import useAuthenticatedFetch from "@/hooks/useAuthenticatedFetch";
 import {
   Card,
   CardContent,
@@ -62,6 +63,7 @@ import {
 
 const AdminOrders = () => {
   const { token, isAuthenticated } = useAuth();
+  const authenticatedFetch = useAuthenticatedFetch();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -87,14 +89,41 @@ const AdminOrders = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetchOrders(token, {
-          page: currentPage,
-          limit: 10,
-          status: selectedStatus !== "all" ? selectedStatus : undefined,
-        });
         
-        setOrders(response.data.orders);
-        setPagination(response.data.pagination);
+        // Build query parameters
+        const searchParams = new URLSearchParams();
+        searchParams.append("page", currentPage.toString());
+        searchParams.append("limit", "10");
+        if (selectedStatus !== "all") {
+          searchParams.append("status", selectedStatus);
+        }
+        
+        const url = `/admin/orders?${searchParams.toString()}`;
+        const response = await authenticatedFetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch orders: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        // Convert string numbers to actual numbers
+        if (result.data?.orders) {
+          result.data.orders = result.data.orders.map((order: any) => ({
+            ...order,
+            total_amount: parseFloat(order.total_amount || 0),
+            subtotal_amount: order.subtotal_amount ? parseFloat(order.subtotal_amount) : undefined,
+            shipping_amount: order.shipping_amount ? parseFloat(order.shipping_amount) : undefined,
+          }));
+        }
+        
+        setOrders(result.data.orders || []);
+        setPagination(result.data.pagination || {
+          current_page: 1,
+          total_pages: 1,
+          total_orders: 0,
+          per_page: 10,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch orders");
         console.error("Error fetching orders:", err);
@@ -175,8 +204,12 @@ const AdminOrders = () => {
     
     setLoadingOrderDetail(true);
     try {
-      const response = await fetchOrderById(token, order.id);
-      setSelectedOrder(response.data.order);
+      const response = await authenticatedFetch(`/admin/orders/${order.id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch order details: ${response.statusText}`);
+      }
+      const result = await response.json();
+      setSelectedOrder(result.data.order);
       setIsOrderDetailOpen(true);
     } catch (err) {
       console.error("Error fetching order details:", err);
@@ -191,17 +224,34 @@ const AdminOrders = () => {
     
     setUpdatingStatus(orderId);
     try {
-      await updateOrderStatusAPI(token, orderId, newStatus);
-      
-      // Refresh orders list
-      const response = await fetchOrders(token, {
-        page: currentPage,
-        limit: 10,
-        status: selectedStatus !== "all" ? selectedStatus : undefined,
+      const response = await authenticatedFetch(`/admin/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
       });
       
-      setOrders(response.data.orders);
-      setPagination(response.data.pagination);
+      if (!response.ok) {
+        throw new Error(`Failed to update order status: ${response.statusText}`);
+      }
+      
+      // Refresh orders list
+      const searchParams = new URLSearchParams();
+      searchParams.append("page", currentPage.toString());
+      searchParams.append("limit", "10");
+      if (selectedStatus !== "all") {
+        searchParams.append("status", selectedStatus);
+      }
+      
+      const refreshResponse = await authenticatedFetch(`/admin/orders?${searchParams.toString()}`);
+      if (refreshResponse.ok) {
+        const result = await refreshResponse.json();
+        setOrders(result.data.orders || []);
+        setPagination(result.data.pagination || {
+          current_page: 1,
+          total_pages: 1,
+          total_orders: 0,
+          per_page: 10,
+        });
+      }
     } catch (err) {
       console.error("Error updating order status:", err);
       setError(err instanceof Error ? err.message : "Failed to update order status");

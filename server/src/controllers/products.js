@@ -310,9 +310,70 @@ const createProduct = async (req, res) => {
       is_featured = false
     } = req.body;
 
+    // Validate required fields
+    if (!name || !price || !stock_quantity || !category_id || !brand) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Missing required fields',
+        details: [
+          { field: 'name', message: !name ? 'Product name is required' : null },
+          { field: 'price', message: !price ? 'Price is required' : null },
+          { field: 'stock_quantity', message: stock_quantity === undefined ? 'Stock quantity is required' : null },
+          { field: 'category_id', message: !category_id ? 'Category ID is required' : null },
+          { field: 'brand', message: !brand ? 'Brand is required' : null }
+        ].filter(detail => detail.message)
+      });
+    }
+
     // Generate slug from product name
     const slug = generateSlug(name);
 
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from('products')
+          .insert({
+            name,
+            slug,
+            description: description || '',
+            price: parseFloat(price),
+            stock_quantity: parseInt(stock_quantity),
+            category_id: category_id, // Keep as string for UUID
+            brand,
+            colors: colors || [],
+            sizes: sizes || [],
+            gender: gender || 'unisex',
+            is_featured: Boolean(is_featured),
+            is_active: true
+          })
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Supabase create product error:', error);
+          return res.status(400).json({
+            error: 'Failed to create product',
+            message: error.message,
+            details: error.details ? [{ field: 'database', message: error.details }] : []
+          });
+        }
+
+        return res.status(201).json({
+          message: 'Product created successfully',
+          data: {
+            product: data
+          }
+        });
+      } catch (err) {
+        console.error('Create product supabase error:', err);
+        return res.status(500).json({
+          error: 'Failed to create product',
+          message: err.message
+        });
+      }
+    }
+
+    // Fallback to SQL (if Supabase not available)
     const result = await query(
       `INSERT INTO products (
         name, slug, description, price, stock_quantity, category_id, brand,
@@ -354,11 +415,61 @@ const updateProduct = async (req, res) => {
       brand,
       colors,
       sizes,
-      images,
       is_featured,
       is_active
     } = req.body;
 
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from('products')
+          .update({
+            name,
+            description: description || '',
+            price: parseFloat(price),
+            stock_quantity: parseInt(stock_quantity),
+            category_id: category_id, // Keep as string for UUID
+            brand,
+            colors: colors || [],
+            sizes: sizes || [],
+            is_featured: Boolean(is_featured),
+            is_active: is_active !== undefined ? Boolean(is_active) : true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Supabase update product error:', error);
+          if (error.code === 'PGRST116') {
+            return res.status(404).json({
+              error: 'Product not found',
+              message: 'The requested product was not found'
+            });
+          }
+          return res.status(400).json({
+            error: 'Failed to update product',
+            message: error.message
+          });
+        }
+
+        return res.json({
+          message: 'Product updated successfully',
+          data: {
+            product: data
+          }
+        });
+      } catch (err) {
+        console.error('Update product supabase error:', err);
+        return res.status(500).json({
+          error: 'Failed to update product',
+          message: err.message
+        });
+      }
+    }
+
+    // Fallback to SQL
     const result = await query(
       `UPDATE products SET
         name = $1, description = $2, price = $3, stock_quantity = $4,
@@ -400,7 +511,46 @@ const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Soft delete by setting is_active to false
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      try {
+        // Soft delete by setting is_active to false
+        const { data, error } = await supabaseAdmin
+          .from('products')
+          .update({ 
+            is_active: false, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', id)
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Supabase delete product error:', error);
+          if (error.code === 'PGRST116') {
+            return res.status(404).json({
+              error: 'Product not found',
+              message: 'The requested product was not found'
+            });
+          }
+          return res.status(400).json({
+            error: 'Failed to delete product',
+            message: error.message
+          });
+        }
+
+        return res.json({
+          message: 'Product deleted successfully'
+        });
+      } catch (err) {
+        console.error('Delete product supabase error:', err);
+        return res.status(500).json({
+          error: 'Failed to delete product',
+          message: err.message
+        });
+      }
+    }
+
+    // Fallback to SQL - Soft delete by setting is_active to false
     const result = await query(
       'UPDATE products SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
       [id]
