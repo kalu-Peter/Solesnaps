@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { query } = require('../config/database');
+const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -48,6 +49,21 @@ const upload = multer({
 const uploadProductImages = async (req, res) => {
   try {
     const { product_id } = req.body;
+
+    // Diagnostic logging: headers and user (if present)
+    try {
+      console.log('Images upload request headers:', {
+        host: req.get('host'),
+        origin: req.headers.origin,
+        authorization: req.headers.authorization ? 'present' : 'missing'
+      });
+    } catch (hdrErr) {
+      console.warn('Could not log headers:', hdrErr && hdrErr.message);
+    }
+
+    if (req.user) {
+      console.log('Authenticated user:', { id: req.user.id, email: req.user.email, role: req.user.role });
+    }
     
     if (!product_id) {
       return res.status(400).json({
@@ -63,45 +79,88 @@ const uploadProductImages = async (req, res) => {
       });
     }
     
-    // Verify product exists
-    const productCheck = await query('SELECT id FROM products WHERE id = $1', [product_id]);
-    if (productCheck.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Product not found',
-        message: 'The specified product does not exist'
+    // Verify product exists and insert images using supabaseAdmin when available
+    let uploadedImages = [];
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      console.log('Images upload: supabase enabled, starting product lookup for', product_id);
+      console.log('Files received count:', Array.isArray(req.files) ? req.files.length : 0);
+      const { data: prodData, error: prodErr } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .eq('id', product_id)
+        .limit(1)
+        .single();
+
+      if (prodErr || !prodData) {
+        console.warn('Images upload: product lookup failed', prodErr);
+        return res.status(404).json({
+          error: 'Product not found',
+          message: 'The specified product does not exist',
+          details: prodErr || null
+        });
+      }
+
+      // Determine current max sort_order using supabase
+      console.log('Images upload: fetching current max sort_order');
+      const { data: maxRows, error: maxErr } = await supabaseAdmin
+        .from('product_images')
+        .select('sort_order')
+        .eq('product_id', product_id)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+
+      if (maxErr) console.warn('Images upload: max sort_order query error', maxErr);
+      let currentMaxOrder = -1;
+      if (!maxErr && Array.isArray(maxRows) && maxRows.length > 0) {
+        currentMaxOrder = maxRows[0].sort_order || -1;
+      }
+
+      // Check if this is the first image (should be primary)
+      const { data: existingImages, error: existErr, count } = await supabaseAdmin
+        .from('product_images')
+        .select('id', { count: 'exact', head: false })
+        .eq('product_id', product_id);
+
+      if (existErr) console.warn('Images upload: existing images query error', existErr);
+      const isFirstImage = (!existErr && Array.isArray(existingImages) && existingImages.length === 0) || (count === 0);
+
+      // Insert image records into database using supabaseAdmin
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        const imageUrl = `${req.protocol}://${req.get('host')}/uploads/products/${file.filename}`;
+        const sortOrder = currentMaxOrder + 1 + i;
+        const isPrimary = isFirstImage && i === 0;
+
+        console.log('Images upload: inserting product_images for file', file.filename, 'sort_order', sortOrder);
+        const { data: insertData, error: insertErr } = await supabaseAdmin
+          .from('product_images')
+          .insert({
+            product_id,
+            url: imageUrl,
+            alt_text: `Product image ${sortOrder + 1}`,
+            is_primary: isPrimary,
+            sort_order: sortOrder
+          })
+          .select()
+          .single();
+
+        if (insertErr) {
+          console.error('Images upload: insert error', insertErr);
+          // Include insertErr in response for debugging
+          throw insertErr;
+        }
+
+        uploadedImages.push(insertData);
+      }
+
+      res.status(201).json({
+        message: 'Images uploaded successfully',
+        data: {
+          images: uploadedImages
+        }
       });
-    }
-    
-    // Get current max sort_order for this product
-    const maxOrderResult = await query(
-      'SELECT COALESCE(MAX(sort_order), -1) as max_order FROM product_images WHERE product_id = $1',
-      [product_id]
-    );
-    let currentMaxOrder = maxOrderResult.rows[0].max_order;
-    
-    // Check if this is the first image (should be primary)
-    const existingImagesResult = await query(
-      'SELECT COUNT(*) as count FROM product_images WHERE product_id = $1',
-      [product_id]
-    );
-    const isFirstImage = existingImagesResult.rows[0].count === '0';
-    
-    // Insert image records into database
-    const uploadedImages = [];
-    for (let i = 0; i < req.files.length; i++) {
-      const file = req.files[i];
-      const imageUrl = `/uploads/products/${file.filename}`;
-      const sortOrder = currentMaxOrder + 1 + i;
-      const isPrimary = isFirstImage && i === 0;
-      
-      const result = await query(
-        `INSERT INTO product_images (product_id, url, alt_text, is_primary, sort_order)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *`,
-        [product_id, imageUrl, `Product image ${sortOrder + 1}`, isPrimary, sortOrder]
-      );
-      
-      uploadedImages.push(result.rows[0]);
+
+      return;
     }
     
     res.status(201).json({
@@ -112,7 +171,8 @@ const uploadProductImages = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Upload product images error:', error);
+    console.error('Upload product images error:', error && error.message);
+    if (error && error.stack) console.error(error.stack);
     
     // Clean up uploaded files on error
     if (req.files) {
@@ -135,20 +195,31 @@ const getProductImages = async (req, res) => {
   try {
     const { product_id } = req.params;
     
-    const result = await query(
-      `SELECT id, image_url, alt_text, is_primary, sort_order, created_at
-       FROM product_images 
-       WHERE product_id = $1 
-       ORDER BY is_primary DESC, sort_order ASC`,
-      [product_id]
-    );
-    
-    res.json({
-      message: 'Product images retrieved successfully',
-      data: {
-        images: result.rows
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from('product_images')
+        .select('id, url, alt_text, is_primary, sort_order, created_at')
+        .eq('product_id', product_id)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.error('Get product images supabase error:', error);
+        return res.status(500).json({ error: 'Failed to retrieve images', message: error.message });
       }
-    });
+
+      // Map to legacy field names if necessary
+      const mapped = (data || []).map(d => ({
+        id: d.id,
+        image_url: d.url,
+        alt_text: d.alt_text,
+        is_primary: d.is_primary,
+        sort_order: d.sort_order,
+        created_at: d.created_at
+      }));
+
+      return res.json({ message: 'Product images retrieved successfully', data: { images: mapped } });
+    }
     
   } catch (error) {
     console.error('Get product images error:', error);
@@ -165,42 +236,54 @@ const deleteProductImage = async (req, res) => {
     const { image_id } = req.params;
     
     // Get image info before deletion
-    const imageResult = await query(
-      'SELECT * FROM product_images WHERE id = $1',
-      [image_id]
-    );
-    
-    if (imageResult.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Image not found',
-        message: 'The specified image does not exist'
+    // Fetch image via supabase
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data: imageData, error: imageErr } = await supabaseAdmin
+        .from('product_images')
+        .select('*')
+        .eq('id', image_id)
+        .single();
+
+      if (imageErr || !imageData) {
+        return res.status(404).json({ error: 'Image not found', message: 'The specified image does not exist' });
+      }
+
+      const image = imageData;
+
+      // Delete from database
+      const { error: delErr } = await supabaseAdmin
+        .from('product_images')
+        .delete()
+        .eq('id', image_id);
+
+      if (delErr) {
+        throw delErr;
+      }
+
+      // Delete physical file
+      const filePath = path.join(__dirname, '../../uploads/products', path.basename(image.url));
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Error deleting file:', err);
       });
-    }
-    
-    const image = imageResult.rows[0];
-    
-    // Delete from database
-    await query('DELETE FROM product_images WHERE id = $1', [image_id]);
-    
-    // Delete physical file
-    const filePath = path.join(__dirname, '../../uploads/products', path.basename(image.image_url));
-    fs.unlink(filePath, (err) => {
-      if (err) console.error('Error deleting file:', err);
-    });
-    
-    // If this was the primary image, set another image as primary
-    if (image.is_primary) {
-      await query(
-        `UPDATE product_images 
-         SET is_primary = true 
-         WHERE product_id = $1 AND id = (
-           SELECT id FROM product_images 
-           WHERE product_id = $1 
-           ORDER BY sort_order ASC 
-           LIMIT 1
-         )`,
-        [image.product_id]
-      );
+
+      // If this was the primary image, set another image as primary
+      if (image.is_primary) {
+        const { data: nextImgs, error: nextErr } = await supabaseAdmin
+          .from('product_images')
+          .select('id')
+          .eq('product_id', image.product_id)
+          .order('sort_order', { ascending: true })
+          .limit(1);
+
+        if (!nextErr && Array.isArray(nextImgs) && nextImgs.length > 0) {
+          await supabaseAdmin
+            .from('product_images')
+            .update({ is_primary: true })
+            .eq('id', nextImgs[0].id);
+        }
+      }
+
+      return res.json({ message: 'Image deleted successfully' });
     }
     
     res.json({
@@ -222,35 +305,33 @@ const setPrimaryImage = async (req, res) => {
     const { image_id } = req.params;
     
     // Get image info
-    const imageResult = await query(
-      'SELECT product_id FROM product_images WHERE id = $1',
-      [image_id]
-    );
-    
-    if (imageResult.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Image not found',
-        message: 'The specified image does not exist'
-      });
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data: imageData, error: imageErr } = await supabaseAdmin
+        .from('product_images')
+        .select('product_id')
+        .eq('id', image_id)
+        .single();
+
+      if (imageErr || !imageData) {
+        return res.status(404).json({ error: 'Image not found', message: 'The specified image does not exist' });
+      }
+
+      const productId = imageData.product_id;
+
+      // Remove primary flag from all images of this product
+      await supabaseAdmin
+        .from('product_images')
+        .update({ is_primary: false })
+        .eq('product_id', productId);
+
+      // Set this image as primary
+      await supabaseAdmin
+        .from('product_images')
+        .update({ is_primary: true })
+        .eq('id', image_id);
+
+      return res.json({ message: 'Primary image updated successfully' });
     }
-    
-    const productId = imageResult.rows[0].product_id;
-    
-    // Remove primary flag from all images of this product
-    await query(
-      'UPDATE product_images SET is_primary = false WHERE product_id = $1',
-      [productId]
-    );
-    
-    // Set this image as primary
-    await query(
-      'UPDATE product_images SET is_primary = true WHERE id = $1',
-      [image_id]
-    );
-    
-    res.json({
-      message: 'Primary image updated successfully'
-    });
     
   } catch (error) {
     console.error('Set primary image error:', error);

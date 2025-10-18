@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+const { query, config: dbConfig } = require('../config/database');
 const { supabaseAdmin, isSupabaseEnabled } = require('../config/supabase');
 
 // Verify JWT token
@@ -18,7 +18,18 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get user from database to ensure they still exist
-    if (isSupabaseEnabled() && supabaseAdmin) {
+    // Check if we're in Supabase-only mode
+    if (dbConfig && dbConfig.useSupabase) {
+      // In Supabase-only mode, never fall back to SQL pool
+      if (!isSupabaseEnabled() || !supabaseAdmin) {
+        console.error('Supabase-only mode configured but admin client not available');
+        return res.status(500).json({
+          error: 'Server misconfiguration',
+          message: 'Database client not available in Supabase-only mode'
+        });
+      }
+
+      console.log('Auth: Using Supabase admin client for user verification');
       // Use Supabase to verify user
       const { data: userData, error: userError } = await supabaseAdmin
         .from('users')
@@ -27,6 +38,7 @@ const authenticateToken = async (req, res, next) => {
         .single();
 
       if (userError || !userData) {
+        console.log('Auth: User not found in Supabase:', userError?.message);
         return res.status(401).json({
           error: 'Invalid token',
           message: 'User not found'
@@ -49,7 +61,8 @@ const authenticateToken = async (req, res, next) => {
       };
 
     } else {
-      // Fallback to PostgreSQL query
+      // Non-Supabase mode: use PostgreSQL pool
+      console.log('Auth: Using PostgreSQL pool for user verification');
       const result = await query(
         'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
         [decoded.userId]
@@ -140,25 +153,28 @@ const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      if (isSupabaseEnabled() && supabaseAdmin) {
-        // Use Supabase to verify user
-        const { data: userData, error: userError } = await supabaseAdmin
-          .from('users')
-          .select('id, first_name, last_name, email, role, is_verified')
-          .eq('id', decoded.userId)
-          .single();
+      // Check if we're in Supabase-only mode
+      if (dbConfig && dbConfig.useSupabase) {
+        if (isSupabaseEnabled() && supabaseAdmin) {
+          // Use Supabase to verify user
+          const { data: userData, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('id, first_name, last_name, email, role, is_verified')
+            .eq('id', decoded.userId)
+            .single();
 
-        if (!userError && userData && userData.is_verified) {
-          req.user = {
-            id: userData.id,
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            email: userData.email,
-            role: userData.role
-          };
+          if (!userError && userData && userData.is_verified) {
+            req.user = {
+              id: userData.id,
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              email: userData.email,
+              role: userData.role
+            };
+          }
         }
       } else {
-        // Fallback to PostgreSQL query
+        // Non-Supabase mode: use PostgreSQL pool
         const result = await query(
           'SELECT id, first_name, last_name, email, role, is_verified FROM users WHERE id = $1',
           [decoded.userId]

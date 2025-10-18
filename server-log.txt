@@ -1,0 +1,51 @@
+🌐 Database mode: SUPABASE ONLY - Local PostgreSQL disabled
+🌐 Testing Supabase API connection (no direct PostgreSQL)...
+✅ Supabase connected successfully
+✅ Supabase API client connected successfully
+🔗 Database operations will use Supabase client exclusively
+⚠️  Port 8080 is in use, using port 8084 instead
+🔍 Port 8080 is being used by: PID: 13800
+
+🚀 TechStyle API Server Started
+📍 Environment: development
+🌐 Server: http://localhost:8084
+🔗 API Base: http://localhost:8084/api
+💾 Database: PostgreSQL on port 5054
+      
+Authenticating user with Supabase...
+User authenticated successfully with Supabase
+[0mPOST /api/auth/login [32m200[0m 1731.566 ms - 683[0m
+Auth: Using Supabase admin client for user verification
+Images upload request headers: { host: 'localhost:8084', origin: undefined, authorization: 'present' }
+Authenticated user: {
+  id: '64c88687-0206-4cc7-8439-73c2bc9d862d',
+  email: 'admin@solesnaps.com',
+  role: 'admin'
+}
+Images upload: supabase enabled, starting product lookup for test-product-123
+Files received count: 1
+[0mPOST /api/products/images [33m404[0m 1401.917 ms - 201[0m
+Auth: Using Supabase admin client for user verification
+[0mPOST /admin/products [33m400[0m 1591.510 ms - 103[0m
+[0mGET /api/products/categories [32m200[0m 777.612 ms - 1571[0m
+[0mGET /api/products/categories [32m200[0m 580.820 ms - 1571[0m
+Auth: Using Supabase admin client for user verification
+[0mPOST /admin/products [32m201[0m 1281.821 ms - 557[0m
+Auth: Using Supabase admin client for user verification
+Images upload request headers: { host: 'localhost:8084', origin: undefined, authorization: 'present' }
+Authenticated user: {
+  id: '64c88687-0206-4cc7-8439-73c2bc9d862d',
+  email: 'admin@solesnaps.com',
+  role: 'admin'
+}
+Images upload: supabase enabled, starting product lookup for a76c557a-db38-4b90-b34f-004d76f26cff
+Files received count: 1
+Images upload: fetching current max sort_order
+Images upload: inserting product_images for file product-1760785519973-427217671.jpg sort_order 0
+[0mPOST /api/products/images [32m201[0m 2583.618 ms - 353[0m
+[0mGET /admin/products [33m401[0m 0.690 ms - 81[0m
+
+🛑 Received SIGINT. Starting graceful shutdown...
+✅ HTTP server closed
+🔒 Database pool closed
+✅ Database connections closed

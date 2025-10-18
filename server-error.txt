@@ -1,0 +1,12 @@
+Images upload: product lookup failed {
+  code: '22P02',
+  details: null,
+  hint: null,
+  message: 'invalid input syntax for type uuid: "test-product-123"'
+}
+Supabase create product error: {
+  code: '22P02',
+  details: null,
+  hint: null,
+  message: 'invalid input syntax for type uuid: "1"'
+}

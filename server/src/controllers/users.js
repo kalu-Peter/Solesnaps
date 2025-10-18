@@ -13,116 +13,87 @@ const getAllUsers = async (req, res) => {
     } = req.query;
 
     if (isSupabaseEnabled() && supabaseAdmin) {
-      // Use Supabase
+      // Build supabase query
       let supabaseQuery = supabaseAdmin
         .from('users')
         .select('id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, created_at, updated_at', { count: 'exact' });
 
-      // Apply filters
-      if (role) {
-        supabaseQuery = supabaseQuery.eq('role', role);
-      }
+      if (role) supabaseQuery = supabaseQuery.eq('role', role);
+      if (is_active !== undefined) supabaseQuery = supabaseQuery.eq('is_verified', is_active === 'true');
+      if (search) supabaseQuery = supabaseQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
 
-      if (is_active !== undefined) {
-        supabaseQuery = supabaseQuery.eq('is_verified', is_active === 'true');
-      }
-
-      if (search) {
-        // For Supabase, we'll search in email for now (full-text search would need different approach)
-        supabaseQuery = supabaseQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
-      }
-
-      // Apply pagination
       const offset = (page - 1) * limit;
-      supabaseQuery = supabaseQuery
-        .order('created_at', { ascending: false })
-        .range(offset, offset + parseInt(limit) - 1);
+      supabaseQuery = supabaseQuery.order('created_at', { ascending: false }).range(offset, offset + parseInt(limit) - 1);
 
       const { data: users, error, count } = await supabaseQuery;
-
       if (error) {
         console.error('Supabase users query error:', error);
-        return res.status(500).json({
-          error: 'Database query failed',
-          message: 'Failed to retrieve users'
-        });
+        return res.status(500).json({ error: 'Database query failed', message: 'Failed to retrieve users' });
       }
 
-      const totalPages = Math.ceil(count / limit);
+      const totalPages = Math.ceil((count || 0) / limit);
+      return res.json({ message: 'Users retrieved successfully', data: { users: users || [], pagination: { current_page: parseInt(page), total_pages: totalPages, total_count: count || 0, per_page: parseInt(limit) } } });
+    }
+    
+    // If Supabase not enabled, fallback to SQL path (left unchanged)
+    const offset = (page - 1) * limit;
 
-      res.json({
-        message: 'Users retrieved successfully',
-        users: users || [],
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (role) {
+      whereConditions.push(`role = $${paramIndex}`);
+      queryParams.push(role);
+      paramIndex++;
+    }
+
+    if (is_active !== undefined) {
+      whereConditions.push(`is_verified = $${paramIndex}`);
+      queryParams.push(is_active === 'true');
+      paramIndex++;
+    }
+
+    if (search) {
+      whereConditions.push(`(CONCAT(first_name, ' ', last_name) ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
+      queryParams.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const usersQuery = `
+      SELECT 
+        id, first_name, last_name, email, role, phone, 
+        date_of_birth, gender, is_verified, created_at, updated_at
+      FROM users
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    queryParams.push(parseInt(limit), offset);
+
+    const usersResult = await query(usersQuery, queryParams);
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
+    const countResult = await query(countQuery, queryParams.slice(0, -2));
+    const totalUsers = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    res.json({
+      message: 'Users retrieved successfully',
+      data: {
+        users: usersResult.rows,
         pagination: {
           current_page: parseInt(page),
           total_pages: totalPages,
-          total_count: count,
+          total_users: totalUsers,
           per_page: parseInt(limit)
         }
-      });
-
-    } else {
-      // Fallback to PostgreSQL
-      const offset = (page - 1) * limit;
-
-      let whereConditions = [];
-      let queryParams = [];
-      let paramIndex = 1;
-
-      if (role) {
-        whereConditions.push(`role = $${paramIndex}`);
-        queryParams.push(role);
-        paramIndex++;
       }
-
-      if (is_active !== undefined) {
-        whereConditions.push(`is_verified = $${paramIndex}`);
-        queryParams.push(is_active === 'true');
-        paramIndex++;
-      }
-
-      if (search) {
-        whereConditions.push(`(CONCAT(first_name, ' ', last_name) ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`);
-        queryParams.push(`%${search}%`);
-        paramIndex++;
-      }
-
-      const whereClause = whereConditions.length > 0 ? 
-        `WHERE ${whereConditions.join(' AND ')}` : '';
-
-      const usersQuery = `
-        SELECT 
-          id, first_name, last_name, email, role, phone, 
-          date_of_birth, gender, is_verified, created_at, updated_at
-        FROM users
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-      `;
-
-      queryParams.push(parseInt(limit), offset);
-
-      const usersResult = await query(usersQuery, queryParams);
-
-      // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
-      const countResult = await query(countQuery, queryParams.slice(0, -2));
-      const totalUsers = parseInt(countResult.rows[0].total);
-      const totalPages = Math.ceil(totalUsers / limit);
-
-      res.json({
-        message: 'Users retrieved successfully',
-        data: {
-          users: usersResult.rows,
-          pagination: {
-            current_page: parseInt(page),
-            total_pages: totalPages,
-            total_users: totalUsers,
-            per_page: parseInt(limit)
-          }
-        }
-      });
-    }
+    });
   } catch (error) {
     console.error('Get all users error:', error);
     res.status(500).json({
@@ -136,6 +107,23 @@ const getAllUsers = async (req, res) => {
 const getUser = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .select('id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, created_at, updated_at')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({
+          error: 'User not found',
+          message: 'The requested user was not found'
+        });
+      }
+
+      return res.json({ message: 'User retrieved successfully', data: { user: data } });
+    }
 
     const result = await query(
       `SELECT 
@@ -182,6 +170,54 @@ const updateUser = async (req, res) => {
       is_verified 
     } = req.body;
 
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      // Check if email is already taken by another user
+      if (email) {
+        const { data: existing, error: existingErr } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .neq('id', id)
+          .limit(1);
+
+        if (existingErr) {
+          console.error('Supabase email check error:', existingErr);
+          return res.status(500).json({ error: 'Database error', message: existingErr.message });
+        }
+
+        if (existing && existing.length > 0) {
+          return res.status(409).json({ error: 'Email already taken', message: 'Another user already has this email address' });
+        }
+      }
+
+      const updatePayload = {
+        first_name: first_name ?? undefined,
+        last_name: last_name ?? undefined,
+        email: email ?? undefined,
+        role: role ?? undefined,
+        phone: phone ?? undefined,
+        date_of_birth: date_of_birth ?? undefined,
+        gender: gender ?? undefined,
+        is_verified: typeof is_verified !== 'undefined' ? is_verified : undefined,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .update(updatePayload)
+        .eq('id', id)
+        .select('id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, updated_at')
+        .single();
+
+      if (error || !data) {
+        console.error('Supabase update user error:', error);
+        return res.status(404).json({ error: 'User not found', message: 'The requested user was not found' });
+      }
+
+      return res.json({ message: 'User updated successfully', data: { user: data } });
+    }
+
+    // Fallback SQL path
     // Check if email is already taken by another user
     if (email) {
       const existingUser = await query(
@@ -250,6 +286,21 @@ const deleteUser = async (req, res) => {
     }
 
     // Soft delete by setting is_verified to false
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .update({ is_verified: false, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('id')
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({ error: 'User not found', message: 'The requested user was not found' });
+      }
+
+      return res.json({ message: 'User deleted successfully' });
+    }
+
     const result = await query(
       'UPDATE users SET is_verified = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
       [id]
@@ -289,6 +340,22 @@ const toggleUserStatus = async (req, res) => {
       });
     }
 
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .update({ is_verified: is_verified, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('id, first_name, last_name, email, is_verified')
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({ error: 'User not found', message: 'The requested user was not found' });
+      }
+
+      const action = is_verified ? 'activated' : 'deactivated';
+      return res.json({ message: `User ${action} successfully`, data: { user: data } });
+    }
+
     const result = await query(
       'UPDATE users SET is_verified = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, first_name, last_name, email, is_verified',
       [is_verified, id]
@@ -323,6 +390,20 @@ const toggleUserStatus = async (req, res) => {
 const getUserStats = async (req, res) => {
   try {
     // Get user counts by role
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      const { data: roleStats, error: roleErr } = await supabaseAdmin
+        .from('users')
+        .select('role, COUNT(*) as count, COUNT(CASE WHEN is_verified = true THEN 1 END) as active_count', { count: 'none' })
+        .group('role');
+
+      // Supabase JS doesn't support complex group-by easily via .select; use raw SQL fallback if needed
+      // Simpler approach: fetch aggregated counts via RPC or multiple queries. For now, run three queries.
+      const { data: recentRegistrations } = await supabaseAdmin.rpc('get_recent_registrations', { days: 30 }).catch(() => ({ data: [] }));
+      const { data: totalStats } = await supabaseAdmin.rpc('get_total_user_stats').catch(() => ({ data: [] }));
+
+      return res.json({ message: 'User statistics retrieved successfully', data: { role_stats: roleStats || [], recent_registrations: recentRegistrations || [], total_stats: (totalStats && totalStats[0]) || {} } });
+    }
+
     const roleStatsResult = await query(`
       SELECT 
         role,
@@ -384,6 +465,45 @@ const createUser = async (req, res) => {
       gender
     } = req.body;
 
+    if (isSupabaseEnabled() && supabaseAdmin) {
+      // Check if user already exists
+      const { data: existing, error: existingErr } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .limit(1);
+
+      if (existingErr) {
+        console.error('Supabase user check error:', existingErr);
+        return res.status(500).json({ error: 'Database error', message: existingErr.message });
+      }
+
+      if (existing && existing.length > 0) {
+        return res.status(409).json({ error: 'User already exists', message: 'A user with this email already exists' });
+      }
+
+      // Hash password
+      const bcrypt = require('bcryptjs');
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .insert({
+          first_name, last_name, email, password: hashedPassword, role, phone, date_of_birth, gender, is_verified: true
+        })
+        .select('id, first_name, last_name, email, role, phone, date_of_birth, gender, is_verified, created_at')
+        .single();
+
+      if (error) {
+        console.error('Supabase create user error:', error);
+        return res.status(500).json({ error: 'Failed to create user', message: error.message });
+      }
+
+      return res.status(201).json({ message: 'User created successfully', data: { user: data } });
+    }
+
+    // Fallback SQL path
     // Check if user already exists
     const existingUser = await query(
       'SELECT id FROM users WHERE email = $1',

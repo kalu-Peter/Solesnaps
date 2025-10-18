@@ -13,10 +13,13 @@ export const useAuthenticatedFetch = () => {
     options: FetchOptions = {}
   ): Promise<Response> => {
     const makeRequest = async (authToken: string | null) => {
+      // Do not force Content-Type for FormData requests. If options.body is
+      // a FormData instance, let the browser set the multipart boundary.
+      const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options.headers,
-      };
+      } as Record<string, string>;
 
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`;

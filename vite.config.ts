@@ -6,15 +6,15 @@ import path from "path";
 export default defineConfig(() => ({
   server: {
     host: "::",
-    port: 8084,
+    port: 8088,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8083',
         changeOrigin: true,
         secure: false,
       },
       '/admin': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8083',
         changeOrigin: true,
         secure: false,
       }

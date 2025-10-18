@@ -501,31 +501,53 @@ const AdminProducts = () => {
   };
 
   const uploadImages = async (productId: number) => {
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0) return null;
 
     try {
       const formData = new FormData();
       formData.append('product_id', productId.toString());
       
-      selectedFiles.forEach((file, index) => {
+      selectedFiles.forEach((file) => {
         formData.append('images', file);
       });
 
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/products/images', {
+      console.log('Uploading images to product:', productId, 'Files:', selectedFiles.length);
+
+      // Use the authenticated fetch helper so token refresh is handled
+      const response = await authenticatedFetch('/api/products/images', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
       });
 
+      console.log('Upload response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error('Upload error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || 'Failed to upload images' };
+        }
         throw new Error(errorData.message || 'Failed to upload images');
       }
 
-      return await response.json();
+      const json = await response.json();
+      console.log('Upload success response:', json);
+
+      // If server returned inserted images, add their URLs to previews so
+      // the admin sees them immediately (they should be absolute URLs)
+      if (json && json.data && Array.isArray(json.data.images)) {
+        const newImageUrls = json.data.images.map((img: any) => img.url || img.image_url || img.path || img.filepath).filter(Boolean);
+        console.log('New image URLs:', newImageUrls);
+        setImagePreviews(prev => [...newImageUrls, ...prev]);
+        
+        // Refresh products to show updated images in the product table
+        await fetchProducts();
+      }
+
+      return json;
     } catch (error) {
       console.error('Error uploading images:', error);
       throw error;
@@ -1093,7 +1115,7 @@ const AdminProducts = () => {
                           <img
                             src={
                               Array.isArray(product.images) && product.images.length > 0
-                                ? `http://localhost:5000${product.images[0].image_url}`
+                                ? (product.images[0].url || product.images[0].image_url || `http://localhost:8083${product.images[0].image_url}`)
                                 : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+"
                             }
                             alt={product.name}

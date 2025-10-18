@@ -60,6 +60,18 @@ const testConnection = async () => {
 
 // Query helper function
 const query = async (text, params) => {
+  // If the server is configured to use Supabase-only mode, the direct
+  // PostgreSQL pool is intentionally disabled. Fail fast and return a
+  // clear error to avoid long connection timeouts when legacy code still
+  // calls `query()`.
+  if (useSupabase) {
+    const msg = 'Direct database pool is disabled in Supabase-only mode. Convert code to use supabaseAdmin.';
+    console.error('❌ Query attempted while in Supabase-only mode:', { text: text && text.substring ? text.substring(0,200) : text });
+    const error = new Error(msg);
+    error.code = 'SUPABASE_MODE_QUERY_BLOCKED';
+    throw error;
+  }
+
   const start = Date.now();
   try {
     const result = await pool.query(text, params);

@@ -28,17 +28,21 @@ const getDeliveryLocations = async (req, res) => {
       });
     } else {
       // Fallback to PostgreSQL
-      const result = await query(`
-        SELECT id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status
-        FROM delivery_locations 
-        WHERE pickup_status = 'active'
-        ORDER BY city_name
-      `);
+      const { data: locations, error } = await supabaseAdmin
+        .from('delivery_locations')
+        .select('id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status')
+        .eq('pickup_status', 'active')
+        .order('city_name', { ascending: true });
+
+      if (error) {
+        console.error('Supabase delivery locations query error:', error);
+        return res.status(500).json({ error: 'Database query failed', message: 'Failed to retrieve delivery locations' });
+      }
 
       res.json({
         message: 'Delivery locations retrieved successfully',
         data: {
-          locations: result.rows
+          locations: locations || []
         }
       });
     }
@@ -56,25 +60,18 @@ const getDeliveryLocation = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await query(`
-      SELECT id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status
-      FROM delivery_locations 
-      WHERE id = $1
-    `, [id]);
+    const { data, error } = await supabaseAdmin
+      .from('delivery_locations')
+      .select('id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status')
+      .eq('id', id)
+      .limit(1)
+      .single();
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Delivery location not found',
-        message: 'The requested delivery location was not found'
-      });
+    if (error || !data) {
+      return res.status(404).json({ error: 'Delivery location not found', message: 'The requested delivery location was not found' });
     }
 
-    res.json({
-      message: 'Delivery location retrieved successfully',
-      data: {
-        location: result.rows[0]
-      }
-    });
+    res.json({ message: 'Delivery location retrieved successfully', data: { location: data } });
   } catch (error) {
     console.error('Get delivery location error:', error);
     res.status(500).json({
@@ -141,26 +138,28 @@ const updateDeliveryLocation = async (req, res) => {
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     values.push(id);
 
-    const result = await query(`
-      UPDATE delivery_locations 
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status, updated_at
-    `, values);
+    const updates = {};
+    // Map updateFields back to object keys from values (fragile but acceptable for dev)
+    // Better approach would be to build 'updates' directly when adding fields above.
+    let vi = 0;
+    if (city_name !== undefined) updates.city_name = city_name;
+    if (shopping_amount !== undefined) updates.shopping_amount = shopping_amount;
+    if (pickup_location !== undefined) updates.pickup_location = pickup_location;
+    if (pickup_phone !== undefined) updates.pickup_phone = pickup_phone;
+    if (pickup_status !== undefined) updates.pickup_status = pickup_status;
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Delivery location not found',
-        message: 'The requested delivery location was not found'
-      });
+    const { data: updated, error: updErr } = await supabaseAdmin
+      .from('delivery_locations')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updErr || !updated) {
+      return res.status(404).json({ error: 'Delivery location not found', message: 'The requested delivery location was not found' });
     }
 
-    res.json({
-      message: 'Delivery location updated successfully',
-      data: {
-        location: result.rows[0]
-      }
-    });
+    res.json({ message: 'Delivery location updated successfully', data: { location: updated } });
   } catch (error) {
     console.error('Update delivery location error:', error);
     res.status(500).json({
@@ -181,18 +180,18 @@ const createDeliveryLocation = async (req, res) => {
       pickup_status = 'active' 
     } = req.body;
 
-    const result = await query(`
-      INSERT INTO delivery_locations (city_name, shopping_amount, pickup_location, pickup_phone, pickup_status)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, city_name, shopping_amount, pickup_location, pickup_phone, pickup_status, created_at
-    `, [city_name, shopping_amount, pickup_location, pickup_phone, pickup_status]);
+    const { data, error } = await supabaseAdmin
+      .from('delivery_locations')
+      .insert({ city_name, shopping_amount, pickup_location, pickup_phone, pickup_status })
+      .select()
+      .single();
 
-    res.status(201).json({
-      message: 'Delivery location created successfully',
-      data: {
-        location: result.rows[0]
-      }
-    });
+    if (error) {
+      console.error('Create delivery location supabase error:', error);
+      return res.status(500).json({ error: 'Failed to create delivery location', message: error.message });
+    }
+
+    res.status(201).json({ message: 'Delivery location created successfully', data: { location: data } });
   } catch (error) {
     console.error('Create delivery location error:', error);
     
@@ -216,26 +215,18 @@ const deleteDeliveryLocation = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await query(`
-      UPDATE delivery_locations 
-      SET pickup_status = 'inactive', updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING id, city_name
-    `, [id]);
+    const { data, error } = await supabaseAdmin
+      .from('delivery_locations')
+      .update({ pickup_status: 'inactive', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id, city_name')
+      .single();
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Delivery location not found',
-        message: 'The requested delivery location was not found'
-      });
+    if (error || !data) {
+      return res.status(404).json({ error: 'Delivery location not found', message: 'The requested delivery location was not found' });
     }
 
-    res.json({
-      message: 'Delivery location deactivated successfully',
-      data: {
-        location: result.rows[0]
-      }
-    });
+    res.json({ message: 'Delivery location deactivated successfully', data: { location: data } });
   } catch (error) {
     console.error('Delete delivery location error:', error);
     res.status(500).json({
@@ -250,25 +241,19 @@ const getDeliveryCost = async (req, res) => {
   try {
     const { cityName } = req.params;
 
-    const result = await query(`
-      SELECT id, city_name, shopping_amount, pickup_location, pickup_phone
-      FROM delivery_locations 
-      WHERE LOWER(city_name) = LOWER($1) AND pickup_status = 'active'
-    `, [cityName]);
+    const { data, error } = await supabaseAdmin
+      .from('delivery_locations')
+      .select('id, city_name, shopping_amount, pickup_location, pickup_phone')
+      .ilike('city_name', cityName)
+      .eq('pickup_status', 'active')
+      .limit(1)
+      .single();
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'City not found',
-        message: 'Delivery is not available for this city'
-      });
+    if (error || !data) {
+      return res.status(404).json({ error: 'City not found', message: 'Delivery is not available for this city' });
     }
 
-    res.json({
-      message: 'Delivery cost retrieved successfully',
-      data: {
-        location: result.rows[0]
-      }
-    });
+    res.json({ message: 'Delivery cost retrieved successfully', data: { location: data } });
   } catch (error) {
     console.error('Get delivery cost error:', error);
     res.status(500).json({
