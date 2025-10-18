@@ -50,11 +50,41 @@ export default function ProductCard(props: ProductCardProps) {
   } = props;
 
   // Get the primary image or first available image
-  const displayImage = legacyImage || 
-    (images && images.length > 0 
-      ? `${window.location.protocol}//${window.location.hostname}:5000${images.find(img => img.is_primary)?.image_url || images[0].image_url}`
-      : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='
-    );
+  const getImageUrl = () => {
+    // If legacy image is provided, use it
+    if (legacyImage) return legacyImage;
+    
+    // If no images array or empty, return placeholder
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+    }
+    
+    // Find primary image or use first image
+    const primaryImage = images.find(img => img.is_primary);
+    const imageToUse = primaryImage || images[0];
+    
+    if (!imageToUse || !imageToUse.image_url) {
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+    }
+    
+    const imageUrl = imageToUse.image_url;
+    
+    // If image URL is already absolute (starts with http), use it as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    
+    // If image URL is relative, construct full URL
+    // Use window.location.origin to get current protocol and host, then proxy to backend
+    if (imageUrl.startsWith('/')) {
+      return imageUrl; // Let the proxy handle it
+    }
+    
+    // If it's a relative path without leading slash, add one
+    return `/${imageUrl}`;
+  };
+
+  const displayImage = getImageUrl();
 
   // Use category_name from API or fallback to legacy category
   const displayCategory = category_name || legacyCategory || brand;

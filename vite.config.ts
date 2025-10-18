@@ -6,17 +6,19 @@ import path from "path";
 export default defineConfig(() => ({
   server: {
     host: "::",
-    port: 8088,
+    port: 8089,
     proxy: {
       '/api': {
         target: 'http://localhost:8083',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/api')
       },
       '/admin': {
         target: 'http://localhost:8083',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/admin/, '/admin')
       }
     }
   },
