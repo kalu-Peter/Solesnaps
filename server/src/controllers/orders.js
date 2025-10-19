@@ -624,6 +624,8 @@ const cancelOrder = async (req, res) => {
 // Get all orders (Admin only)
 const getAllOrders = async (req, res) => {
   try {
+    console.log("=== GET ALL ORDERS START ===");
+    
     const { 
       page = 1, 
       limit = 10, 
@@ -633,80 +635,91 @@ const getAllOrders = async (req, res) => {
       end_date 
     } = req.query;
     
-    const offset = (page - 1) * limit;
+    console.log("Query parameters:", { page, limit, status, user_id, start_date, end_date });
 
-    let whereConditions = [];
-    let queryParams = [];
-    let paramIndex = 1;
+    if (!isSupabaseEnabled() || !supabaseAdmin) {
+      return res.status(500).json({
+        error: 'Database unavailable',
+        message: 'Order service is not properly configured'
+      });
+    }
 
+    const pageInt = parseInt(page, 10);
+    const limitInt = parseInt(limit, 10);
+    const from = (pageInt - 1) * limitInt;
+    const to = from + limitInt - 1;
+
+    // Build Supabase query
+    let query = supabaseAdmin
+      .from('orders')
+      .select(`
+        id,
+        user_id,
+        order_number,
+        total_amount,
+        subtotal_amount,
+        shipping_amount,
+        status,
+        payment_method,
+        payment_status,
+        created_at,
+        updated_at,
+        delivery_location_id,
+        tracking_number,
+        users!inner(first_name, last_name, email)
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    // Apply filters
     if (status) {
-      whereConditions.push(`o.status = $${paramIndex}`);
-      queryParams.push(status);
-      paramIndex++;
+      query = query.eq('status', status);
     }
-
+    
     if (user_id) {
-      whereConditions.push(`o.user_id = $${paramIndex}`);
-      queryParams.push(parseInt(user_id));
-      paramIndex++;
+      query = query.eq('user_id', user_id);
     }
-
+    
     if (start_date) {
-      whereConditions.push(`o.created_at >= $${paramIndex}`);
-      queryParams.push(start_date);
-      paramIndex++;
+      query = query.gte('created_at', start_date);
     }
-
+    
     if (end_date) {
-      whereConditions.push(`o.created_at <= $${paramIndex}`);
-      queryParams.push(end_date);
-      paramIndex++;
+      query = query.lte('created_at', end_date);
     }
 
-    const whereClause = whereConditions.length > 0 ? 
-      `WHERE ${whereConditions.join(' AND ')}` : '';
+    // Apply pagination
+    const { data: orders, error, count } = await query.range(from, to);
 
-    const ordersQuery = `
-      SELECT 
-        o.id, o.user_id, o.order_number, o.total_amount, o.subtotal_amount, o.shipping_amount,
-        o.status, o.payment_method, o.payment_status, o.created_at, o.updated_at,
-        o.delivery_location_id, o.tracking_number,
-        CONCAT(u.first_name, ' ', u.last_name) as user_name, u.email as user_email,
-        COUNT(oi.id) as item_count
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      LEFT JOIN order_items oi ON o.id = oi.order_id
-      ${whereClause}
-      GROUP BY o.id, u.first_name, u.last_name, u.email
-      ORDER BY o.created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    if (error) {
+      console.error('Supabase getAllOrders error:', error);
+      return res.status(500).json({
+        error: 'Failed to retrieve orders',
+        message: error.message
+      });
+    }
 
-    queryParams.push(parseInt(limit), offset);
+    console.log(`Found ${orders?.length || 0} orders`);
 
-    const ordersResult = await query(ordersQuery, queryParams);
+    // Format the response
+    const formattedOrders = orders?.map(order => ({
+      ...order,
+      user_name: order.users ? `${order.users.first_name || ''} ${order.users.last_name || ''}`.trim() : 'Unknown',
+      user_email: order.users?.email || 'Unknown',
+      item_count: 0 // TODO: Get actual item count if needed
+    })) || [];
 
-    // Get total count
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      ${whereClause}
-    `;
-
-    const countResult = await query(countQuery, queryParams.slice(0, -2));
-    const totalOrders = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(totalOrders / limit);
+    const totalOrders = count || 0;
+    const totalPages = Math.ceil(totalOrders / limitInt);
 
     res.json({
-      message: 'Orders retrieved successfully',
+      success: true,
       data: {
-        orders: ordersResult.rows,
+        orders: formattedOrders,
         pagination: {
-          current_page: parseInt(page),
+          current_page: pageInt,
           total_pages: totalPages,
           total_orders: totalOrders,
-          per_page: parseInt(limit)
+          per_page: limitInt
         }
       }
     });

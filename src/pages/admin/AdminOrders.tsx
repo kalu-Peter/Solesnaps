@@ -98,7 +98,7 @@ const AdminOrders = () => {
           searchParams.append("status", selectedStatus);
         }
         
-        const url = `/admin/orders?${searchParams.toString()}`;
+        const url = `/api/orders?${searchParams.toString()}`;
         const response = await authenticatedFetch(url);
         
         if (!response.ok) {
