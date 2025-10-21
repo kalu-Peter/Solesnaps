@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabaseAuth } from "../lib/supabase";
 
 interface User {
   id: number;
@@ -14,7 +15,7 @@ interface User {
 
 // Helper function to get full name
 const getFullName = (user: User | null): string => {
-  if (!user) return '';
+  if (!user) return "";
   return `${user.first_name} ${user.last_name}`.trim();
 };
 
@@ -89,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (storedToken && storedUser) {
           // Parse stored user data
           const userData = JSON.parse(storedUser);
-          
+
           // Set token and user immediately for immediate UI update
           setToken(storedToken);
           setUser(userData);
@@ -137,7 +138,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    const attemptTokenRefresh = async (refreshToken: string): Promise<boolean> => {
+    const attemptTokenRefresh = async (
+      refreshToken: string
+    ): Promise<boolean> => {
       try {
         const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: "POST",
@@ -187,32 +190,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const { data, error } = await supabaseAuth.signIn(email, password);
 
-      const data = await response.json();
+      if (error) {
+        console.error("Login error:", error.message);
+        return {
+          success: false,
+          error:
+            error.message || "Login failed. Please check your credentials.",
+        };
+      }
 
-      if (response.ok) {
-        const { user: userData, tokens } = data;
+      if (data.user) {
+        console.log("User logged in:", data.user);
+
+        // Create user object in the expected format
+        const userData: User = {
+          id: parseInt(data.user.id) || 0,
+          first_name: data.user.user_metadata?.first_name || "",
+          last_name: data.user.user_metadata?.last_name || "",
+          email: data.user.email || "",
+          role: data.user.user_metadata?.role || "customer",
+          phone: data.user.user_metadata?.phone,
+          avatar_url: data.user.user_metadata?.avatar_url,
+          date_of_birth: data.user.user_metadata?.date_of_birth,
+          gender: data.user.user_metadata?.gender,
+        };
 
         setUser(userData);
-        setToken(tokens.access_token);
+        setToken(data.session?.access_token || "");
 
         // Store in localStorage
-        localStorage.setItem("auth_token", tokens.access_token);
-        localStorage.setItem("auth_user", JSON.stringify(userData));
-        localStorage.setItem("refresh_token", tokens.refresh_token);
+        if (data.session?.access_token) {
+          localStorage.setItem("auth_token", data.session.access_token);
+          localStorage.setItem("auth_user", JSON.stringify(userData));
+          if (data.session.refresh_token) {
+            localStorage.setItem("refresh_token", data.session.refresh_token);
+          }
+        }
 
         return { success: true };
       } else {
         return {
           success: false,
-          error: data.message || "Login failed. Please check your credentials.",
+          error: "Login failed. No user data received.",
         };
       }
     } catch (error) {
