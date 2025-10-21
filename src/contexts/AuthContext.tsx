@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabaseAuth } from "../lib/supabase";
+import { supabaseAuth, supabaseDb } from "../lib/supabase";
 
 interface User {
-  id: number;
+  id: string; // UUID string instead of number
   first_name: string;
   last_name: string;
   email: string;
@@ -80,7 +80,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const API_BASE_URL = "/api";
 
-  // Initialize auth state from localStorage
+  // Helper function to ensure user exists in database
+  const ensureUserInDatabase = async (supabaseUser: any) => {
+    try {
+      console.log("Checking if user exists in database:", supabaseUser.id);
+
+      // Use upsert instead of separate check and create
+      const userDataForDb = {
+        id: supabaseUser.id,
+        auth_id: supabaseUser.id,
+        email: supabaseUser.email,
+        first_name: supabaseUser.user_metadata?.first_name || "",
+        last_name: supabaseUser.user_metadata?.last_name || "",
+        phone: supabaseUser.user_metadata?.phone || null,
+        role: supabaseUser.user_metadata?.role || "customer",
+        date_of_birth: supabaseUser.user_metadata?.date_of_birth || null,
+        gender: supabaseUser.user_metadata?.gender || null,
+      };
+
+      // Use direct supabase client with upsert to handle conflicts
+      const { supabase } = await import("../lib/supabase");
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("users")
+          .upsert(userDataForDb, {
+            onConflict: "id",
+            ignoreDuplicates: false,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Failed to upsert user:", error);
+          throw error;
+        }
+        console.log("User ensured in database:", data);
+      } else {
+        throw new Error("Supabase not configured");
+      }
+    } catch (error) {
+      console.error("Error ensuring user in database:", error);
+      throw error;
+    }
+  }; // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -94,6 +136,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Set token and user immediately for immediate UI update
           setToken(storedToken);
           setUser(userData);
+
+          // Restore Supabase session if available
+          const storedSession = localStorage.getItem("supabase_session");
+          if (storedSession) {
+            try {
+              const session = JSON.parse(storedSession);
+              // Import supabase client directly for session restoration
+              const { supabase } = await import("../lib/supabase");
+              if (supabase) {
+                await supabase.auth.setSession(session);
+                console.log("Supabase session restored");
+              }
+            } catch (error) {
+              console.error("Failed to restore Supabase session:", error);
+            }
+          }
 
           // Verify token is still valid by fetching user profile
           try {
@@ -201,12 +259,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
         console.log("User logged in:", data.user);
+        console.log("Session established:", data.session);
+
+        // User automatically created by database trigger - no manual sync needed
 
         // Create user object in the expected format
         const userData: User = {
-          id: parseInt(data.user.id) || 0,
+          id: data.user.id, // Keep as string UUID
           first_name: data.user.user_metadata?.first_name || "",
           last_name: data.user.user_metadata?.last_name || "",
           email: data.user.email || "",
@@ -218,22 +279,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
 
         setUser(userData);
-        setToken(data.session?.access_token || "");
+        setToken(data.session.access_token);
 
         // Store in localStorage
-        if (data.session?.access_token) {
-          localStorage.setItem("auth_token", data.session.access_token);
-          localStorage.setItem("auth_user", JSON.stringify(userData));
-          if (data.session.refresh_token) {
-            localStorage.setItem("refresh_token", data.session.refresh_token);
-          }
+        localStorage.setItem("auth_token", data.session.access_token);
+        localStorage.setItem("auth_user", JSON.stringify(userData));
+        localStorage.setItem("supabase_session", JSON.stringify(data.session));
+        if (data.session.refresh_token) {
+          localStorage.setItem("refresh_token", data.session.refresh_token);
         }
 
         return { success: true };
       } else {
         return {
           success: false,
-          error: "Login failed. No user data received.",
+          error: "Login failed. No session data received.",
         };
       }
     } catch (error) {

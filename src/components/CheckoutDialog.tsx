@@ -15,7 +15,7 @@ import { CreditCard, Phone, Truck, CheckCircle, Loader2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { DeliveryLocation } from "@/types/cart";
-import { supabaseDb } from "@/lib/supabase";
+import { supabaseDb, supabaseAuth, supabase } from "@/lib/supabase";
 
 interface CheckoutDialogProps {
   isOpen: boolean;
@@ -36,19 +36,18 @@ interface CheckoutDialogProps {
 type PaymentMethod = "mpesa" | "pay_on_delivery";
 
 interface OrderData {
+  user_id: string;
   delivery_location_id: string;
   payment_method: PaymentMethod;
   subtotal_amount: number;
   shipping_amount: number;
-  coupon_id?: number;
-  coupon_code?: string;
-  discount_amount: number;
   total_amount: number;
+  delivery_location: DeliveryLocation;
   order_items: Array<{
     product_id: string;
     quantity: number;
     unit_price: number;
-    total_price: number;
+    size?: string | null;
   }>;
 }
 
@@ -68,7 +67,7 @@ export default function CheckoutDialog({
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const { clearCart } = useCart();
-  const { token, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated } = useAuth();
 
   const total = subtotal + shippingCost - couponDiscount;
 
@@ -76,30 +75,82 @@ export default function CheckoutDialog({
     setIsProcessing(true);
     setOrderError(null);
 
+    if (!user) {
+      setOrderError("User not authenticated");
+      setIsProcessing(false);
+      return;
+    }
+
     try {
-      // Prepare order data
-      const orderData: OrderData = {
+      // Get current Supabase user for UUID
+      const {
+        data: { user: supabaseUser },
+      } = await supabaseAuth.getCurrentUser();
+
+      console.log("Current supabase user:", supabaseUser?.id);
+
+      // Check if user exists in public.users table
+      let { data: dbUser, error: userError } = await supabase
+        ?.from("users")
+        .select("id, auth_id")
+        .eq("auth_id", supabaseUser?.id)
+        .single();
+
+      console.log("Database user lookup:", { dbUser, userError });
+
+      if (userError || !dbUser) {
+        console.log("User not found in public.users, creating record...");
+
+        // Create user record in public.users
+        const { data: newUser, error: createError } = await supabase
+          ?.from("users")
+          .insert({
+            id: supabaseUser?.id, // Use auth UUID as primary key
+            auth_id: supabaseUser?.id,
+            email: supabaseUser?.email,
+            first_name: supabaseUser?.user_metadata?.first_name || "",
+            last_name: supabaseUser?.user_metadata?.last_name || "",
+            role: "user",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Failed to create user record:", createError);
+          throw new Error("Failed to create user record. Please try again.");
+        }
+
+        console.log("Created new user record:", newUser);
+        dbUser = newUser;
+      }
+
+      // Use the UUID from public.users.id (not auth_id)
+      const orderData = {
+        user_id: dbUser.id,
         delivery_location_id: deliveryLocation.id,
         payment_method: paymentMethod,
         subtotal_amount: subtotal,
         shipping_amount: shippingCost,
-        coupon_id: appliedCoupon?.id,
-        coupon_code: appliedCoupon?.code,
-        discount_amount: couponDiscount,
         total_amount: total,
+        delivery_location: deliveryLocation, // Pass full location for address creation
         order_items: cartItems.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
           unit_price: currentPrices[item.id] || item.price,
-          total_price: (currentPrices[item.id] || item.price) * item.quantity,
+          size: item.size || null,
         })),
       };
 
       const { data: result, error } = await supabaseDb.createOrder(orderData);
 
       if (error) {
-        console.error("Failed to create order:", error.message);
-        throw new Error("Failed to create order");
+        console.error("Failed to create order:", error);
+        console.error("Order data that failed:", orderData);
+        throw new Error(
+          `Failed to create order: ${error.message || JSON.stringify(error)}`
+        );
       }
 
       console.log("Order created successfully:", result);

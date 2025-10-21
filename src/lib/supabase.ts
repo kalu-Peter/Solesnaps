@@ -58,7 +58,7 @@ export const supabaseAuth = {
 
   // Get current user
   getCurrentUser: () => {
-    if (!supabase) return null;
+    if (!supabase) return Promise.resolve({ data: { user: null }, error: null });
     return supabase.auth.getUser();
   },
 
@@ -238,11 +238,68 @@ export const supabaseDb = {
   createOrder: async (orderData: any) => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    return await supabase
+    // Extract order items and delivery location from the order data
+    const { order_items, delivery_location, ...orderFields } = orderData;
+    
+    // Generate order number
+    const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
+    // Create the main order record with only valid database fields
+    const orderInsertData = {
+      user_id: orderData.user_id,
+      delivery_location_id: orderData.delivery_location_id,
+      payment_method: orderData.payment_method,
+      subtotal_amount: orderData.subtotal_amount,
+      shipping_amount: orderData.shipping_amount,
+      total_amount: orderData.total_amount,
+      order_number: orderNumber,
+      shipping_address: { 
+        city: delivery_location?.city_name || 'N/A',
+        pickup_location: delivery_location?.pickup_location || 'N/A',
+        phone: delivery_location?.pickup_phone || 'N/A'
+      },
+      billing_address: { 
+        city: delivery_location?.city_name || 'N/A',
+        pickup_location: delivery_location?.pickup_location || 'N/A',
+        phone: delivery_location?.pickup_phone || 'N/A'
+      }
+    };
+
+    console.log('Attempting to insert order:', orderInsertData);
+    
+    const { data: order, error: orderError } = await supabase
       .from('orders')
-      .insert(orderData)
+      .insert(orderInsertData)
       .select()
       .single();
+
+    if (orderError) {
+      console.error('Order insertion error:', orderError);
+      throw orderError;
+    }
+
+    // Create order items if they exist
+    if (order_items && order_items.length > 0) {
+      const orderItemsData = order_items.map((item: any) => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.unit_price,
+        size: item.size || null
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsData);
+
+      if (itemsError) {
+        // If order items creation fails, we should clean up the order
+        await supabase.from('orders').delete().eq('id', order.id);
+        throw itemsError;
+      }
+    }
+
+    return { data: order, error: null };
   },
 
   // Update order status

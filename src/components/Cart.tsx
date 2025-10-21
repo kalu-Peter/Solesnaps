@@ -36,10 +36,14 @@ export default function Cart() {
     shippingCost,
   } = useCart();
 
-  const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
+  const [deliveryLocations, setDeliveryLocations] = useState<
+    DeliveryLocation[]
+  >([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
+  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>(
+    {}
+  );
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -58,18 +62,24 @@ export default function Cart() {
         })
         .catch((error) => {
           console.error("Failed to fetch delivery locations:", error);
-          setLocationError(`Failed to load delivery locations: ${error.message}`);
+          setLocationError(
+            `Failed to load delivery locations: ${error.message}`
+          );
         })
         .finally(() => setLoadingLocations(false));
     }
-  }, [isOpen, deliveryLocations.length, loadingLocations]);
+  }, [isOpen, deliveryLocations.length]);
 
   // Fetch current prices for cart items
   useEffect(() => {
-    if (items.length > 0 && Object.keys(currentPrices).length === 0 && !loadingPrices) {
+    if (
+      items.length > 0 &&
+      Object.keys(currentPrices).length === 0 &&
+      !loadingPrices
+    ) {
       setLoadingPrices(true);
-      const productIds = items.map(item => item.id);
-      
+      const productIds = items.map((item) => item.id);
+
       fetchProductPrices(productIds)
         .then((prices) => {
           console.log("Fetched current prices:", prices);
@@ -78,8 +88,8 @@ export default function Cart() {
         .catch((error) => {
           console.error("Failed to fetch current prices:", error);
           // Fallback to cart prices if API fails
-          const fallbackPrices: Record<number, number> = {};
-          items.forEach(item => {
+          const fallbackPrices: Record<string, number> = {};
+          items.forEach((item) => {
             fallbackPrices[item.id] = item.price;
           });
           setCurrentPrices(fallbackPrices);
@@ -94,7 +104,7 @@ export default function Cart() {
   const calculateTotalPrice = () => {
     return items.reduce((total, item) => {
       const currentPrice = currentPrices[item.id] || item.price;
-      return total + (currentPrice * item.quantity);
+      return total + currentPrice * item.quantity;
     }, 0);
   };
 
@@ -148,39 +158,68 @@ export default function Cart() {
             <div className="border-t border-border pt-4 space-y-4">
               {/* Delivery Location Selector */}
               <div>
-                <label className="block text-sm font-medium mb-1">Delivery Location</label>
+                <label className="block text-sm font-medium mb-1">
+                  Delivery Location
+                </label>
                 {loadingLocations ? (
-                  <div className="text-xs text-muted-foreground">Loading locations...</div>
+                  <div className="text-xs text-muted-foreground">
+                    Loading locations...
+                  </div>
                 ) : locationError ? (
-                  <div className="text-xs text-destructive">{locationError}</div>
+                  <div className="text-xs text-destructive">
+                    {locationError}
+                  </div>
                 ) : (
                   <select
                     className="w-full border rounded-md px-2 py-1 text-sm"
                     value={selectedDeliveryLocation?.id || ""}
-                    onChange={e => {
-                      console.log("Selected value:", e.target.value, "type:", typeof e.target.value);
-                      console.log("Available locations:", deliveryLocations.map(l => ({ id: l.id, name: l.city_name })));
-                      const loc = deliveryLocations.find(l => l.id === e.target.value);
+                    onChange={(e) => {
+                      console.log(
+                        "Selected value:",
+                        e.target.value,
+                        "type:",
+                        typeof e.target.value
+                      );
+                      console.log(
+                        "Available locations:",
+                        deliveryLocations.map((l) => ({
+                          id: l.id,
+                          name: l.city_name,
+                        }))
+                      );
+                      const loc = deliveryLocations.find(
+                        (l) => l.id === e.target.value
+                      );
                       console.log("Selected delivery location:", loc);
                       if (loc) {
-                        console.log("Setting delivery location with shopping_amount:", loc.shopping_amount);
+                        console.log(
+                          "Setting delivery location with shopping_amount:",
+                          loc.shopping_amount
+                        );
                         setDeliveryLocation(loc);
                       } else {
-                        console.log("No matching location found for value:", e.target.value);
+                        console.log(
+                          "No matching location found for value:",
+                          e.target.value
+                        );
                       }
                     }}
                   >
                     <option value="">Select a location...</option>
-                    {deliveryLocations.map(loc => (
+                    {deliveryLocations.map((loc) => (
                       <option key={loc.id} value={loc.id}>
-                        {loc.city_name} ({loc.pickup_status === "active" ? "Active" : "Inactive"})
+                        {loc.city_name} (
+                        {loc.pickup_status === "active" ? "Active" : "Inactive"}
+                        )
                       </option>
                     ))}
                   </select>
                 )}
                 {selectedDeliveryLocation && (
                   <div className="mt-1 text-xs text-muted-foreground">
-                    <div>Pickup: {selectedDeliveryLocation.pickup_location}</div>
+                    <div>
+                      Pickup: {selectedDeliveryLocation.pickup_location}
+                    </div>
                     <div>Phone: {selectedDeliveryLocation.pickup_phone}</div>
                   </div>
                 )}
@@ -222,15 +261,20 @@ export default function Cart() {
                 </div>
                 {appliedCoupon && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Discount ({appliedCoupon.code})</span>
+                    <span className="text-muted-foreground">
+                      Discount ({appliedCoupon.code})
+                    </span>
                     <span className="text-green-600 font-medium">
                       -Ksh {couponDiscount.toFixed(2)}
                     </span>
                   </div>
                 )}
-                {selectedDeliveryLocation && selectedDeliveryLocation.pickup_status !== "active" && (
-                  <div className="text-xs text-destructive">This location is not active for delivery.</div>
-                )}
+                {selectedDeliveryLocation &&
+                  selectedDeliveryLocation.pickup_status !== "active" && (
+                    <div className="text-xs text-destructive">
+                      This location is not active for delivery.
+                    </div>
+                  )}
               </div>
 
               <Separator />
@@ -250,7 +294,11 @@ export default function Cart() {
                     loadingPrices ? (
                       <span className="text-muted-foreground">Loading...</span>
                     ) : (
-                      `Ksh ${(calculatedTotalPrice + Number(shippingCost || 0) - couponDiscount).toFixed(2)}`
+                      `Ksh ${(
+                        calculatedTotalPrice +
+                        Number(shippingCost || 0) -
+                        couponDiscount
+                      ).toFixed(2)}`
                     )
                   ) : (
                     "--"
@@ -260,19 +308,22 @@ export default function Cart() {
 
               {/* Checkout Button */}
               {isAuthenticated ? (
-                <Button 
-                  className="w-full" 
-                  size="lg" 
-                  disabled={!selectedDeliveryLocation || selectedDeliveryLocation.pickup_status !== "active"}
+                <Button
+                  className="w-full"
+                  size="lg"
+                  disabled={
+                    !selectedDeliveryLocation ||
+                    selectedDeliveryLocation.pickup_status !== "active"
+                  }
                   onClick={() => setShowCheckout(true)}
                 >
                   <CreditCard className="h-4 w-4 mr-2" />
                   Checkout
                 </Button>
               ) : (
-                <Button 
-                  className="w-full" 
-                  size="lg" 
+                <Button
+                  className="w-full"
+                  size="lg"
                   variant="outline"
                   onClick={() => setShowAuthModal(true)}
                 >
