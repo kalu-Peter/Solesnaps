@@ -331,8 +331,7 @@ export const supabaseDb = {
     return await supabase
       .from('delivery_locations')
       .select('*')
-      .eq('is_active', true)
-      .order('name');
+      .order('city_name');
   },
 
   // Create delivery location
