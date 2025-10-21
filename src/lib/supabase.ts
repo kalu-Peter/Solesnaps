@@ -461,7 +461,13 @@ export const supabaseDb = {
   uploadProductImage: async (file: File, productId: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    const fileName = `${productId}/${Date.now()}-${file.name}`;
+    // Sanitize the filename to remove invalid characters
+    const sanitizedFileName = file.name
+      .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace invalid chars with underscore
+      .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+      .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+    
+    const fileName = `${productId}/${Date.now()}-${sanitizedFileName}`;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('product-images')
@@ -479,7 +485,7 @@ export const supabaseDb = {
       .from('product_images')
       .insert({
         product_id: productId,
-        image_url: urlData.publicUrl,
+        url: urlData.publicUrl,  // Changed from image_url to url
         alt_text: file.name
       })
       .select()

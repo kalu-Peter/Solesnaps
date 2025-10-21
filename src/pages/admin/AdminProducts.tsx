@@ -139,6 +139,16 @@ const AdminProducts = () => {
 
   const { toast } = useToast();
 
+  // Helper function to generate slug from product name
+  const generateSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "") // Remove special characters
+      .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with hyphens
+      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+  };
+
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     description: "",
@@ -246,6 +256,7 @@ const AdminProducts = () => {
 
       const productData = {
         name: formData.name.trim(),
+        slug: generateSlug(formData.name.trim()),
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         stock_quantity: parseInt(formData.stock_quantity),
@@ -339,6 +350,7 @@ const AdminProducts = () => {
 
       const productData = {
         name: formData.name.trim(),
+        slug: generateSlug(formData.name.trim()),
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         stock_quantity: parseInt(formData.stock_quantity),
