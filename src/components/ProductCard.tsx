@@ -46,40 +46,40 @@ export default function ProductCard(props: ProductCardProps) {
     category_name,
     image: legacyImage,
     originalPrice,
-    category: legacyCategory
+    category: legacyCategory,
   } = props;
 
   // Get the primary image or first available image
   const getImageUrl = () => {
     // If legacy image is provided, use it
     if (legacyImage) return legacyImage;
-    
+
     // If no images array or empty, return placeholder
     if (!images || !Array.isArray(images) || images.length === 0) {
-      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+      return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=";
     }
-    
+
     // Find primary image or use first image
-    const primaryImage = images.find(img => img.is_primary);
+    const primaryImage = images.find((img) => img.is_primary);
     const imageToUse = primaryImage || images[0];
-    
+
     if (!imageToUse || !imageToUse.image_url) {
-      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+      return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=";
     }
-    
+
     const imageUrl = imageToUse.image_url;
-    
+
     // If image URL is already absolute (starts with http), use it as is but fix the port
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
       // Replace any localhost port with 8080 (current backend port)
-      return imageUrl.replace(/localhost:\d+/, 'localhost:8080');
+      return imageUrl.replace(/localhost:\d+/, "localhost:8080");
     }
-    
+
     // If image URL is relative, construct full URL
-    if (imageUrl.startsWith('/')) {
+    if (imageUrl.startsWith("/")) {
       return imageUrl; // Let the proxy handle it
     }
-    
+
     // If it's a relative path without leading slash, add one
     return `/${imageUrl}`;
   };
@@ -87,12 +87,12 @@ export default function ProductCard(props: ProductCardProps) {
   const displayImage = getImageUrl();
 
   // Debug logging for image URLs (can remove later)
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     console.log(`Product ${name}:`, {
       hasImages: images && images.length > 0,
       imageCount: images?.length || 0,
       firstImageUrl: images?.[0]?.image_url,
-      displayImage
+      displayImage,
     });
   }
 
@@ -101,17 +101,28 @@ export default function ProductCard(props: ProductCardProps) {
 
   // Format price to KES currency
   const formatPrice = (priceValue: string | number) => {
-    const numericPrice = typeof priceValue === 'string' ? parseFloat(priceValue.replace(/[^0-9.]/g, '')) : priceValue;
-    return `KES ${numericPrice.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const numericPrice =
+      typeof priceValue === "string"
+        ? parseFloat(priceValue.replace(/[^0-9.]/g, ""))
+        : priceValue;
+    return `KES ${numericPrice.toLocaleString("en-KE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   const displayPrice = formatPrice(price);
 
   const handleAddToCart = () => {
     // Parse the numeric price for the cart
-    const numericPrice = typeof price === 'string' ? parseFloat(price.replace(/[^0-9.]/g, '')) : price;
-    const numericOriginalPrice = originalPrice ? parseFloat(originalPrice.replace(/[^0-9.]/g, '')) : undefined;
-    
+    const numericPrice =
+      typeof price === "string"
+        ? parseFloat(price.replace(/[^0-9.]/g, ""))
+        : price;
+    const numericOriginalPrice = originalPrice
+      ? parseFloat(originalPrice.replace(/[^0-9.]/g, ""))
+      : undefined;
+
     addItem({
       id: String(id), // Ensure ID is a string
       name,
@@ -135,16 +146,18 @@ export default function ProductCard(props: ProductCardProps) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         </div>
-        <div className="p-4 space-y-3">
-          <p className="text-xs text-muted uppercase tracking-wider">
+        <div className="p-2 sm:p-4 space-y-2 sm:space-y-3">
+          <p className="text-xs text-muted uppercase tracking-wider truncate">
             {displayCategory}
           </p>
-          <h3 className="font-semibold text-lg text-muted-foreground">
+          <h3 className="font-semibold text-sm sm:text-lg text-muted-foreground truncate">
             {name}
           </h3>
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-2xl font-bold text-primary">{displayPrice}</span>
+              <span className="text-lg sm:text-2xl font-bold text-primary">
+                {displayPrice}
+              </span>
               {originalPrice && (
                 <span className="text-sm text-muted-foreground line-through">
                   {originalPrice}
@@ -153,7 +166,7 @@ export default function ProductCard(props: ProductCardProps) {
             </div>
             <Button
               size="icon"
-              className={`rounded-full transition-all duration-300 ${
+              className={`rounded-full transition-all duration-300 h-8 w-8 sm:h-10 sm:w-10 ${
                 isAdded
                   ? "bg-green-500 hover:bg-green-600"
                   : "bg-primary hover:bg-accent"
@@ -162,9 +175,9 @@ export default function ProductCard(props: ProductCardProps) {
               disabled={isAdded}
             >
               {isAdded ? (
-                <Check className="h-4 w-4" />
+                <Check className="h-3 w-3 sm:h-4 sm:w-4" />
               ) : (
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
               )}
             </Button>
           </div>

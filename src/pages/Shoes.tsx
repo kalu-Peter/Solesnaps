@@ -158,22 +158,22 @@ const Shoes = () => {
       <section className="py-8">
         <div className="container mx-auto px-4">
           {/* Filters Toolbar */}
-          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-4 mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="bg-[hsl(var(--sidebar-background))] rounded-lg border border-border p-3 sm:p-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
               {/* Left Side - Product Count and Filters */}
-              <div className="flex flex-wrap items-center gap-4 flex-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 flex-1">
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Showing {shoes.length} products
                 </span>
                 <div className="h-4 w-px bg-border hidden lg:block"></div>
 
                 {/* Category Filter */}
-                <div className="min-w-[140px]">
+                <div className="min-w-[100px] sm:min-w-[140px]">
                   <Select
                     value={selectedCategory}
                     onValueChange={setSelectedCategory}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -188,7 +188,7 @@ const Shoes = () => {
                 </div>
 
                 {/* Gender Filter */}
-                <div className="min-w-[130px]">
+                <div className="min-w-[90px] sm:min-w-[130px]">
                   <Select
                     value={selectedGender}
                     onValueChange={(value) => {
@@ -201,7 +201,7 @@ const Shoes = () => {
                       setSearchParams(searchParams);
                     }}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -214,7 +214,7 @@ const Shoes = () => {
                 </div>
 
                 {/* Size Filter */}
-                <div className="min-w-[120px]">
+                <div className="min-w-[80px] sm:min-w-[120px]">
                   <Select
                     value={
                       selectedSizes.length > 0
@@ -225,7 +225,7 @@ const Shoes = () => {
                     }
                     onValueChange={() => {}} // Handled in content
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Size" /> Size
                     </SelectTrigger>
                     <SelectContent>
@@ -315,7 +315,7 @@ const Shoes = () => {
               {/* Right Side - Sort Control */}
               <div className="flex items-center">
                 <Select defaultValue="featured">
-                  <SelectTrigger className="w-40 h-9">
+                  <SelectTrigger className="w-32 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -335,11 +335,11 @@ const Shoes = () => {
 
           {/* Products Grid */}
           {loading ? (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {[...Array(6)].map((_, i) => (
+            <div className="grid gap-3 grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+              {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-80 bg-muted animate-pulse rounded-lg"
+                  className="h-64 bg-muted animate-pulse rounded-lg"
                 ></div>
               ))}
             </div>
@@ -350,7 +350,7 @@ const Shoes = () => {
               </p>
             </div>
           ) : (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
               {shoes.map((shoe) => (
                 <ProductCard
                   key={shoe.id}

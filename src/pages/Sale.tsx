@@ -63,13 +63,15 @@ const Sale = () => {
       brand: "Nike",
       colors: ["Black", "White"],
       sizes: ["8", "9", "10", "11"],
-      images: [{ 
-        id: 1, 
-        image_url: shoe1, 
-        alt_text: "Sport Runner Pro", 
-        is_primary: true, 
-        sort_order: 0 
-      }],
+      images: [
+        {
+          id: 1,
+          image_url: shoe1,
+          alt_text: "Sport Runner Pro",
+          is_primary: true,
+          sort_order: 0,
+        },
+      ],
       category_name: "Shoes",
       category_id: 1,
       is_featured: true,
@@ -89,13 +91,15 @@ const Sale = () => {
       brand: "Adidas",
       colors: ["Brown", "Tan"],
       sizes: ["7", "8", "9", "10"],
-      images: [{ 
-        id: 2, 
-        image_url: shoe2, 
-        alt_text: "Urban Classic", 
-        is_primary: true, 
-        sort_order: 0 
-      }],
+      images: [
+        {
+          id: 2,
+          image_url: shoe2,
+          alt_text: "Urban Classic",
+          is_primary: true,
+          sort_order: 0,
+        },
+      ],
       category_name: "Shoes",
       category_id: 1,
       is_featured: true,
@@ -115,13 +119,15 @@ const Sale = () => {
       brand: "Merrill",
       colors: ["Green", "Gray"],
       sizes: ["8", "9", "10", "11", "12"],
-      images: [{ 
-        id: 3, 
-        image_url: shoe1, 
-        alt_text: "Trail Runner", 
-        is_primary: true, 
-        sort_order: 0 
-      }],
+      images: [
+        {
+          id: 3,
+          image_url: shoe1,
+          alt_text: "Trail Runner",
+          is_primary: true,
+          sort_order: 0,
+        },
+      ],
       category_name: "Shoes",
       category_id: 1,
       is_featured: true,
@@ -238,7 +244,7 @@ const Sale = () => {
                   Hot Deals
                 </Badge>
                 <div className="h-4 w-px bg-border hidden lg:block"></div>
-                
+
                 {/* Category Filter */}
                 <div className="min-w-[140px]">
                   <Select defaultValue="all">
@@ -278,8 +284,12 @@ const Sale = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="discount">Highest Discount</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price-high">
+                      Price: High to Low
+                    </SelectItem>
                     <SelectItem value="stock">Stock Level</SelectItem>
                   </SelectContent>
                 </Select>
@@ -288,10 +298,10 @@ const Sale = () => {
           </div>
 
           {/* Products Grid */}
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid gap-3 grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
             {saleProducts.map((product) => (
               <div key={product.id} className="relative">
-                <ProductCard 
+                <ProductCard
                   id={product.id}
                   name={product.name}
                   description={product.description}

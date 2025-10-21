@@ -20,7 +20,9 @@ const NewArrivals = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("newest");
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Function to calculate arrival date display
@@ -29,25 +31,34 @@ const NewArrivals = () => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - created.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return "1 day ago";
     if (diffDays <= 7) return `${diffDays} days ago`;
-    if (diffDays <= 14) return `${Math.ceil(diffDays / 7)} week${diffDays > 7 ? 's' : ''} ago`;
+    if (diffDays <= 14)
+      return `${Math.ceil(diffDays / 7)} week${diffDays > 7 ? "s" : ""} ago`;
     return "Recently added";
   };
 
   // Sort products based on selected criteria
-  const sortProducts = (products: Product[], sortCriteria: string): Product[] => {
+  const sortProducts = (
+    products: Product[],
+    sortCriteria: string
+  ): Product[] => {
     const sorted = [...products];
     switch (sortCriteria) {
-      case 'newest':
-        return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      case 'price-low':
+      case "newest":
+        return sorted.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      case "price-low":
         return sorted.sort((a, b) => a.price - b.price);
-      case 'price-high':
+      case "price-high":
         return sorted.sort((a, b) => b.price - a.price);
-      case 'category':
-        return sorted.sort((a, b) => (a.category_name || '').localeCompare(b.category_name || ''));
+      case "category":
+        return sorted.sort((a, b) =>
+          (a.category_name || "").localeCompare(b.category_name || "")
+        );
       default:
         return sorted;
     }
@@ -59,36 +70,38 @@ const NewArrivals = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Fetch categories
         const categoriesResponse = await productService.getCategories();
         setCategories(categoriesResponse.data.categories);
-        
+
         // First try to get new arrivals
         const response = await productService.getNewArrivals(50);
-        
+
         if (response.data.products && response.data.products.length > 0) {
           setNewProducts(response.data.products);
         } else {
           // If no new arrivals, fallback to recent products
           const recentResponse = await productService.getProducts({
             limit: 50,
-            sort_by: 'created_at',
-            sort_order: 'desc'
+            sort_by: "created_at",
+            sort_order: "desc",
           });
           setNewProducts(recentResponse.data.products);
         }
       } catch (err) {
-        console.error('Failed to fetch new arrivals:', err);
-        setError('Failed to load new arrivals. Please try again later.');
-        
+        console.error("Failed to fetch new arrivals:", err);
+        setError("Failed to load new arrivals. Please try again later.");
+
         // Try to get any products as fallback
         try {
-          const fallbackResponse = await productService.getProducts({ limit: 20 });
+          const fallbackResponse = await productService.getProducts({
+            limit: 20,
+          });
           setNewProducts(fallbackResponse.data.products);
           setError(null); // Clear error if fallback works
         } catch (fallbackErr) {
-          console.error('Fallback fetch also failed:', fallbackErr);
+          console.error("Fallback fetch also failed:", fallbackErr);
         }
       } finally {
         setLoading(false);
@@ -101,15 +114,17 @@ const NewArrivals = () => {
   // Sort and filter products when sortBy, selectedCategory, or newProducts change
   useEffect(() => {
     let filteredProducts = [...newProducts];
-    
+
     // Apply category filter
-    if (selectedCategory !== 'all') {
+    if (selectedCategory !== "all") {
       const categoryId = selectedCategory;
-      filteredProducts = filteredProducts.filter(product => 
-        product.category_id?.toString() === categoryId || product.category?.id === categoryId
+      filteredProducts = filteredProducts.filter(
+        (product) =>
+          product.category_id?.toString() === categoryId ||
+          product.category?.id === categoryId
       );
     }
-    
+
     // Sort the filtered products
     setSortedProducts(sortProducts(filteredProducts, sortBy));
   }, [newProducts, sortBy, selectedCategory]);
@@ -202,10 +217,10 @@ const NewArrivals = () => {
                   Fresh Stock
                 </Badge>
                 <div className="h-4 w-px bg-border hidden lg:block"></div>
-                
+
                 {/* Category Filter */}
                 <div className="min-w-[140px]">
-                  <Select 
+                  <Select
                     value={selectedCategory}
                     onValueChange={setSelectedCategory}
                   >
@@ -215,7 +230,10 @@ const NewArrivals = () => {
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
+                        <SelectItem
+                          key={category.id}
+                          value={category.id.toString()}
+                        >
                           {category.name}
                         </SelectItem>
                       ))}
@@ -247,8 +265,12 @@ const NewArrivals = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price-high">
+                      Price: High to Low
+                    </SelectItem>
                     <SelectItem value="category">By Category</SelectItem>
                   </SelectContent>
                 </Select>
@@ -275,15 +297,19 @@ const NewArrivals = () => {
             <div className="flex justify-center items-center py-12">
               <div className="text-center">
                 <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No New Arrivals</h3>
-                <p className="text-muted-foreground">No products have been added in the last 15 days.</p>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  No New Arrivals
+                </h3>
+                <p className="text-muted-foreground">
+                  No products have been added in the last 15 days.
+                </p>
               </div>
             </div>
           ) : (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
               {sortedProducts.map((product) => (
                 <div key={product.id} className="relative">
-                  <ProductCard 
+                  <ProductCard
                     id={product.id}
                     name={product.name}
                     description={product.description}
@@ -292,13 +318,15 @@ const NewArrivals = () => {
                     brand={product.brand}
                     colors={Array.isArray(product.colors) ? product.colors : []}
                     sizes={Array.isArray(product.sizes) ? product.sizes : []}
-                    images={product.product_images?.map(img => ({
-                      id: parseInt(img.id) || 0,
-                      image_url: img.url, // Map 'url' from API to 'image_url' expected by ProductCard
-                      alt_text: img.alt_text,
-                      is_primary: img.is_primary,
-                      sort_order: img.sort_order
-                    })) || []}
+                    images={
+                      product.product_images?.map((img) => ({
+                        id: parseInt(img.id) || 0,
+                        image_url: img.url, // Map 'url' from API to 'image_url' expected by ProductCard
+                        alt_text: img.alt_text,
+                        is_primary: img.is_primary,
+                        sort_order: img.sort_order,
+                      })) || []
+                    }
                     category_name={product.category_name}
                     category_id={product.category_id}
                     is_featured={product.is_featured}
