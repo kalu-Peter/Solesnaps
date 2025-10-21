@@ -28,6 +28,7 @@ import {
   Eye,
   Loader2,
 } from "lucide-react";
+import { supabaseDb } from "@/lib/supabase";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -73,105 +74,83 @@ const AdminDashboard = () => {
 
     try {
       // Fetch orders for total revenue and order count
-      const ordersResponse = await fetch('/admin/orders', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: ordersData, error: ordersError } =
+        await supabaseDb.getOrders({});
 
       // Fetch users count
-      const usersResponse = await fetch('/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: usersData, error: usersError } = await supabaseDb.getUsers(
+        {}
+      );
 
       // Fetch products count
-      const productsResponse = await fetch('/admin/products', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: productsData, error: productsError } =
+        await supabaseDb.getProducts({});
 
-      if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json().catch((e) => {
-          console.error('Invalid JSON from /admin/orders:', e);
-          return null;
-        });
-        const orders = ordersData?.data?.orders || [];
+      if (!ordersError && ordersData) {
+        const orders = ordersData || [];
 
         // Calculate total revenue (safe reduce)
         const totalRevenue = orders.reduce((sum: number, order: any) => {
           return sum + parseFloat(order?.total_amount || 0);
         }, 0);
 
-        setStats(prev => ({
+        setStats((prev) => ({
           ...prev,
           totalRevenue,
-          totalOrders: ordersData?.data?.pagination?.total_orders ?? orders.length,
+          totalOrders: orders.length,
         }));
 
         // Set recent orders (first 5)
-        const formattedOrders: RecentOrder[] = (orders.slice(0, 5) || []).map((order: any) => ({
-          id: order?.id,
-          order_number: order?.order_number || `#${order?.id}`,
-          user_name: order?.user_name || 'Unknown User',
-          user_email: order?.user_email || 'No email',
-          status: order?.status || 'unknown',
-          total_amount: parseFloat(order?.total_amount || 0),
-          created_at: order?.created_at || new Date().toISOString(),
-        }));
+        const formattedOrders: RecentOrder[] = (orders.slice(0, 5) || []).map(
+          (order: any) => ({
+            id: order?.id,
+            order_number: order?.order_number || `#${order?.id}`,
+            user_name: order?.user_name || "Unknown User",
+            user_email: order?.user_email || "No email",
+            status: order?.status || "unknown",
+            total_amount: parseFloat(order?.total_amount || 0),
+            created_at: order?.created_at || new Date().toISOString(),
+          })
+        );
         setRecentOrders(formattedOrders);
       } else {
-        // Non-ok response: log and keep defaults
-        console.warn('/admin/orders returned', ordersResponse.status, ordersResponse.statusText);
+        console.warn("Failed to fetch orders:", ordersError?.message);
       }
 
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json().catch((e) => {
-          console.error('Invalid JSON from /admin/users:', e);
-          return null;
-        });
-        const totalUsers = usersData?.data?.pagination?.total_users ?? usersData?.data?.users?.length ?? 0;
-        setStats(prev => ({
+      if (!usersError && usersData) {
+        const totalUsers = usersData?.length ?? 0;
+        setStats((prev) => ({
           ...prev,
           totalUsers,
         }));
       } else {
-        console.warn('/admin/users returned', usersResponse.status, usersResponse.statusText);
+        console.warn("Failed to fetch users:", usersError?.message);
       }
 
-      if (productsResponse.ok) {
-        const productsData = await productsResponse.json().catch((e) => {
-          console.error('Invalid JSON from /admin/products:', e);
-          return null;
-        });
-        const products = productsData?.data?.products || [];
-        setStats(prev => ({
+      if (!productsError && productsData) {
+        const products = productsData || [];
+        setStats((prev) => ({
           ...prev,
-          totalProducts: productsData?.data?.pagination?.total_products ?? products.length,
+          totalProducts: products.length,
         }));
 
         // Mock top products calculation (you can enhance this with actual sales data)
-        const mockTopProducts: TopProduct[] = (products.slice(0, 2) || []).map((product: any, index: number) => ({
-          id: product.id,
-          name: product.name,
-          category: 'Shoes', // You can get this from categories if available
-          total_sales: Math.floor(Math.random() * 200) + 50, // Mock sales data
-          total_revenue: Math.floor(Math.random() * 20000) + 5000, // Mock revenue data
-        }));
+        const mockTopProducts: TopProduct[] = (products.slice(0, 2) || []).map(
+          (product: any, index: number) => ({
+            id: product.id,
+            name: product.name,
+            category: "Shoes", // You can get this from categories if available
+            total_sales: Math.floor(Math.random() * 200) + 50, // Mock sales data
+            total_revenue: Math.floor(Math.random() * 20000) + 5000, // Mock revenue data
+          })
+        );
         setTopProducts(mockTopProducts);
+      } else {
+        console.warn("Failed to fetch products:", productsError?.message);
       }
-      else {
-        console.warn('/admin/products returned', productsResponse.status, productsResponse.statusText);
-      }
-
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to fetch dashboard data');
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to fetch dashboard data");
     }
   };
 
@@ -186,9 +165,9 @@ const AdminDashboard = () => {
   }, [token]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
+    return new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
     }).format(amount);
   };
 
@@ -258,10 +237,7 @@ const AdminDashboard = () => {
           <div className="text-center">
             <p className="text-destructive mb-2">Error loading dashboard</p>
             <p className="text-sm text-muted-foreground">{error}</p>
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="mt-4"
-            >
+            <Button onClick={() => window.location.reload()} className="mt-4">
               Retry
             </Button>
           </div>
@@ -287,7 +263,9 @@ const AdminDashboard = () => {
                     <div className="flex items-center text-xs text-muted-foreground">
                       <TrendIcon
                         className={`mr-1 h-3 w-3 ${
-                          stat.trend === "up" ? "text-green-500" : "text-red-500"
+                          stat.trend === "up"
+                            ? "text-green-500"
+                            : "text-red-500"
                         }`}
                       />
                       {stat.change}
@@ -303,7 +281,9 @@ const AdminDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Latest orders from your customers</CardDescription>
+                <CardDescription>
+                  Latest orders from your customers
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -318,7 +298,9 @@ const AdminDashboard = () => {
                   <TableBody>
                     {recentOrders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.order_number}</TableCell>
+                        <TableCell className="font-medium">
+                          {order.order_number}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{order.user_name}</div>
@@ -408,7 +390,9 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks to manage your store</CardDescription>
+              <CardDescription>
+                Common tasks to manage your store
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -419,19 +403,28 @@ const AdminDashboard = () => {
                   </Button>
                 </Link>
                 <Link to="/admin/users">
-                  <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full">
+                  <Button
+                    variant="outline"
+                    className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full"
+                  >
                     <Users className="h-5 w-5" />
                     <span className="text-sm font-medium">Manage Users</span>
                   </Button>
                 </Link>
                 <Link to="/admin/orders">
-                  <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full">
+                  <Button
+                    variant="outline"
+                    className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full"
+                  >
                     <ShoppingCart className="h-5 w-5" />
                     <span className="text-sm font-medium">View Orders</span>
                   </Button>
                 </Link>
                 <Link to="/admin/analytics">
-                  <Button variant="outline" className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full">
+                  <Button
+                    variant="outline"
+                    className="h-20 flex-col gap-2 text-foreground hover:text-primary w-full"
+                  >
                     <TrendingUp className="h-5 w-5" />
                     <span className="text-sm font-medium">Analytics</span>
                   </Button>

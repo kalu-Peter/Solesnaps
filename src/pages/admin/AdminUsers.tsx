@@ -1,17 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Edit, Trash2, Plus, Search, UserCheck, UserX, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Edit,
+  Trash2,
+  Plus,
+  Search,
+  UserCheck,
+  UserX,
+  AlertCircle,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { supabaseDb } from "@/lib/supabase";
 
 interface User {
   id: number;
@@ -41,9 +90,9 @@ interface UserFormData {
 const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -53,14 +102,14 @@ const AdminUsers: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [authError, setAuthError] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    password: '',
-    role: 'admin',
-    phone: '',
-    date_of_birth: '',
-    gender: ''
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+    role: "admin",
+    phone: "",
+    date_of_birth: "",
+    gender: "",
   });
 
   const { toast } = useToast();
@@ -68,8 +117,10 @@ const AdminUsers: React.FC = () => {
 
   const checkAuthAndFetch = async () => {
     // Check both possible token keys for compatibility
-    const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-    
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token");
+
     if (!token) {
       setAuthError(true);
       setLoading(false);
@@ -80,11 +131,11 @@ const AdminUsers: React.FC = () => {
       });
       // Redirect to login after a short delay
       setTimeout(() => {
-        navigate('/login');
+        navigate("/login");
       }, 2000);
       return;
     }
-    
+
     // If we have a token, proceed with fetching
     await fetchUsers();
   };
@@ -93,59 +144,48 @@ const AdminUsers: React.FC = () => {
     try {
       setLoading(true);
       setAuthError(false);
-      
+
       // Check both possible token keys for compatibility
-      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      
+      const token =
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("auth_token");
+
       if (!token) {
-        throw new Error('No access token found');
+        throw new Error("No access token found");
       }
-      
+
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: '10'
+        limit: "10",
       });
 
-      if (searchTerm) params.append('search', searchTerm);
-      if (roleFilter !== 'all') params.append('role', roleFilter);
-      if (statusFilter !== 'all') params.append('is_verified', statusFilter);
+      if (searchTerm) params.append("search", searchTerm);
+      if (roleFilter !== "all") params.append("role", roleFilter);
+      if (statusFilter !== "all") params.append("is_verified", statusFilter);
 
-      const response = await fetch(`/admin/users?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const { data: usersData, error } = await supabaseDb.getUsers({
+        search: searchTerm || undefined,
+        role: roleFilter !== "all" ? roleFilter : undefined,
+        is_verified:
+          statusFilter !== "all" ? statusFilter === "verified" : undefined,
+        page: currentPage,
+        limit: 20,
       });
 
-      if (response.status === 401) {
-        // Token is invalid or expired
-        localStorage.removeItem('access_token');
-        setAuthError(true);
-        toast({
-          title: "Session Expired",
-          description: "Please log in again to continue.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
-        return;
+      if (error) {
+        console.error("Failed to fetch users:", error.message);
+        throw new Error(error.message || "Failed to fetch users");
       }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch users');
-      }
-
-      const data = await response.json();
-      setUsers(data.data?.users || []);
-      setTotalPages(data.data?.pagination?.total_pages || 1);
+      setUsers(usersData || []);
+      setTotalPages(1); // Simple pagination for now
     } catch (error: any) {
-      console.error('Error fetching users:', error);
+      console.error("Error fetching users:", error);
       if (!authError) {
         toast({
           title: "Error",
-          description: error.message || "Failed to fetch users. Please try again.",
+          description:
+            error.message || "Failed to fetch users. Please try again.",
           variant: "destructive",
         });
       }
@@ -164,13 +204,15 @@ const AdminUsers: React.FC = () => {
 
   // Effect for pagination and filters - only if authenticated
   useEffect(() => {
-    const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token");
     if (!token) {
       setAuthError(true);
       setLoading(false);
       return;
     }
-    
+
     if (!authError) {
       fetchUsers();
     }
@@ -178,11 +220,13 @@ const AdminUsers: React.FC = () => {
 
   // Separate useEffect for search with debouncing
   useEffect(() => {
-    const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token");
     if (!token || authError) {
       return; // Don't search if there's no token or auth error
     }
-    
+
     const timeoutId = setTimeout(() => {
       if (currentPage === 1) {
         fetchUsers();
@@ -196,7 +240,7 @@ const AdminUsers: React.FC = () => {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (authError) {
       toast({
         title: "Authentication Required",
@@ -218,7 +262,7 @@ const AdminUsers: React.FC = () => {
 
     if (formData.last_name.trim().length < 2) {
       toast({
-        title: "Validation Error", 
+        title: "Validation Error",
         description: "Last name must be at least 2 characters long.",
         variant: "destructive",
       });
@@ -239,15 +283,18 @@ const AdminUsers: React.FC = () => {
     if (!passwordRegex.test(formData.password)) {
       toast({
         title: "Validation Error",
-        description: "Password must contain at least one uppercase letter, one lowercase letter, and one number.",
+        description:
+          "Password must contain at least one uppercase letter, one lowercase letter, and one number.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      
+      const token =
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("auth_token");
+
       if (!token) {
         setAuthError(true);
         toast({
@@ -255,7 +302,7 @@ const AdminUsers: React.FC = () => {
           description: "Please log in to continue.",
           variant: "destructive",
         });
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
@@ -265,44 +312,24 @@ const AdminUsers: React.FC = () => {
         last_name: formData.last_name.trim(),
         email: formData.email.trim(),
         password: formData.password,
-        role: 'admin',
+        role: "admin",
         ...(formData.phone.trim() && { phone: formData.phone.trim() }),
-        ...(formData.date_of_birth && { date_of_birth: formData.date_of_birth }),
-        ...(formData.gender && { gender: formData.gender })
+        ...(formData.date_of_birth && {
+          date_of_birth: formData.date_of_birth,
+        }),
+        ...(formData.gender && { gender: formData.gender }),
       };
 
-      const response = await fetch('/admin/users', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(adminUserData),
-      });
+      const { data: newUser, error } = await supabaseDb.createUser(
+        adminUserData
+      );
 
-      if (response.status === 401) {
-        localStorage.removeItem('access_token');
-        setAuthError(true);
-        toast({
-          title: "Session Expired",
-          description: "Please log in again.",
-          variant: "destructive",
-        });
-        navigate('/login');
-        return;
+      if (error) {
+        console.error("Failed to create admin user:", error.message);
+        throw new Error(error.message || "Failed to create admin user");
       }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        
-        // If it's a validation error, show specific field errors
-        if (errorData.details && Array.isArray(errorData.details)) {
-          const fieldErrors = errorData.details.map(detail => `${detail.field}: ${detail.message}`).join(', ');
-          throw new Error(`Validation errors: ${fieldErrors}`);
-        }
-        
-        throw new Error(errorData.message || 'Failed to create admin user');
-      }
+      console.log("Admin user created:", newUser);
 
       toast({
         title: "Success",
@@ -313,7 +340,7 @@ const AdminUsers: React.FC = () => {
       resetForm();
       checkAuthAndFetch();
     } catch (error: any) {
-      console.error('Error creating admin user:', error);
+      console.error("Error creating admin user:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create admin user",
@@ -327,49 +354,42 @@ const AdminUsers: React.FC = () => {
     if (!selectedUser) return;
 
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
+      const token =
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("auth_token");
       const updateData = { ...formData };
-      
+
       // Don't send empty password
       if (!updateData.password) {
         delete updateData.password;
       }
-      
+
       // Don't send empty phone (will fail mobile phone validation)
-      if (!updateData.phone || updateData.phone.trim() === '') {
+      if (!updateData.phone || updateData.phone.trim() === "") {
         delete updateData.phone;
       }
-      
+
       // Don't send empty date_of_birth
       if (!updateData.date_of_birth) {
         delete updateData.date_of_birth;
       }
-      
+
       // Don't send empty gender
       if (!updateData.gender) {
         delete updateData.gender;
       }
 
-      const response = await fetch(`/admin/users/${selectedUser.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
+      const { data: updatedUser, error } = await supabaseDb.updateUser(
+        selectedUser.id.toString(),
+        updateData
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        
-        // If it's a validation error, show specific field errors
-        if (errorData.details && Array.isArray(errorData.details)) {
-          const fieldErrors = errorData.details.map(detail => `${detail.field}: ${detail.message}`).join(', ');
-          throw new Error(`Validation errors: ${fieldErrors}`);
-        }
-        
-        throw new Error(errorData.message || 'Failed to update user');
+      if (error) {
+        console.error("Failed to update user:", error.message);
+        throw new Error(error.message || "Failed to update user");
       }
+
+      console.log("User updated:", updatedUser);
 
       toast({
         title: "Success",
@@ -381,7 +401,7 @@ const AdminUsers: React.FC = () => {
       resetForm();
       checkAuthAndFetch();
     } catch (error: any) {
-      console.error('Error updating user:', error);
+      console.error("Error updating user:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update user",
@@ -392,29 +412,28 @@ const AdminUsers: React.FC = () => {
 
   const handleToggleUserStatus = async (user: User) => {
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/admin/users/${user.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_verified: !user.is_verified }),
-      });
+      const { data: updatedUser, error } = await supabaseDb.updateUser(
+        user.id.toString(),
+        { is_verified: !user.is_verified }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user status');
+      if (error) {
+        console.error("Failed to update user status:", error.message);
+        throw new Error(error.message || "Failed to update user status");
       }
+
+      console.log("User status updated:", updatedUser);
 
       toast({
         title: "Success",
-        description: `User ${!user.is_verified ? 'activated' : 'deactivated'} successfully`,
+        description: `User ${
+          !user.is_verified ? "activated" : "deactivated"
+        } successfully`,
       });
 
       checkAuthAndFetch();
     } catch (error: any) {
-      console.error('Error toggling user status:', error);
+      console.error("Error toggling user status:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update user status",
@@ -427,18 +446,14 @@ const AdminUsers: React.FC = () => {
     if (!userToDelete) return;
 
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/admin/users/${userToDelete.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const { error } = await supabaseDb.deleteUser(userToDelete.id.toString());
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
+      if (error) {
+        console.error("Failed to delete user:", error.message);
+        throw new Error(error.message || "Failed to delete user");
       }
+
+      console.log("User deleted successfully");
 
       toast({
         title: "Success",
@@ -449,7 +464,7 @@ const AdminUsers: React.FC = () => {
       setUserToDelete(null);
       checkAuthAndFetch();
     } catch (error: any) {
-      console.error('Error deleting user:', error);
+      console.error("Error deleting user:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete user",
@@ -460,14 +475,14 @@ const AdminUsers: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      first_name: '',
-      last_name: '',
-      email: '',
-      password: '',
-      role: 'admin',
-      phone: '',
-      date_of_birth: '',
-      gender: ''
+      first_name: "",
+      last_name: "",
+      email: "",
+      password: "",
+      role: "admin",
+      phone: "",
+      date_of_birth: "",
+      gender: "",
     });
   };
 
@@ -477,11 +492,11 @@ const AdminUsers: React.FC = () => {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      password: '', // Don't pre-fill password
+      password: "", // Don't pre-fill password
       role: user.role,
-      phone: user.phone || '',
-      date_of_birth: user.date_of_birth || '',
-      gender: user.gender || ''
+      phone: user.phone || "",
+      date_of_birth: user.date_of_birth || "",
+      gender: user.gender || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -495,7 +510,7 @@ const AdminUsers: React.FC = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">User Management</h1>
-        <Button 
+        <Button
           onClick={() => setIsCreateDialogOpen(true)}
           disabled={authError}
         >
@@ -531,9 +546,15 @@ const AdminUsers: React.FC = () => {
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="text-black">All Roles</SelectItem>
-                  <SelectItem value="customer" className="text-black">Customer</SelectItem>
-                  <SelectItem value="admin" className="text-black">Admin</SelectItem>
+                  <SelectItem value="all" className="text-black">
+                    All Roles
+                  </SelectItem>
+                  <SelectItem value="customer" className="text-black">
+                    Customer
+                  </SelectItem>
+                  <SelectItem value="admin" className="text-black">
+                    Admin
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -544,9 +565,15 @@ const AdminUsers: React.FC = () => {
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="text-black">All Status</SelectItem>
-                  <SelectItem value="true" className="text-black">Active</SelectItem>
-                  <SelectItem value="false" className="text-black">Inactive</SelectItem>
+                  <SelectItem value="all" className="text-black">
+                    All Status
+                  </SelectItem>
+                  <SelectItem value="true" className="text-black">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="false" className="text-black">
+                    Inactive
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -566,13 +593,13 @@ const AdminUsers: React.FC = () => {
           {authError ? (
             <div className="text-center py-12">
               <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Authentication Required</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                Authentication Required
+              </h3>
               <p className="text-muted-foreground mb-4">
                 You need to be logged in to access user management.
               </p>
-              <Button onClick={() => navigate('/login')}>
-                Go to Login
-              </Button>
+              <Button onClick={() => navigate("/login")}>Go to Login</Button>
             </div>
           ) : loading ? (
             <div className="text-center py-4">Loading users...</div>
@@ -584,10 +611,16 @@ const AdminUsers: React.FC = () => {
                     <TableHead className="min-w-[150px]">Name</TableHead>
                     <TableHead className="min-w-[200px]">Email</TableHead>
                     <TableHead className="min-w-[80px]">Role</TableHead>
-                    <TableHead className="min-w-[120px] hidden sm:table-cell">Phone</TableHead>
-                    <TableHead className="min-w-[80px] hidden md:table-cell">Gender</TableHead>
+                    <TableHead className="min-w-[120px] hidden sm:table-cell">
+                      Phone
+                    </TableHead>
+                    <TableHead className="min-w-[80px] hidden md:table-cell">
+                      Gender
+                    </TableHead>
                     <TableHead className="min-w-[80px]">Status</TableHead>
-                    <TableHead className="min-w-[100px] hidden lg:table-cell">Created</TableHead>
+                    <TableHead className="min-w-[100px] hidden lg:table-cell">
+                      Created
+                    </TableHead>
                     <TableHead className="min-w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -596,9 +629,11 @@ const AdminUsers: React.FC = () => {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div>
-                          <div>{user.first_name} {user.last_name}</div>
+                          <div>
+                            {user.first_name} {user.last_name}
+                          </div>
                           <div className="text-xs text-muted-foreground sm:hidden">
-                            {user.phone || 'No phone'}
+                            {user.phone || "No phone"}
                           </div>
                         </div>
                       </TableCell>
@@ -606,26 +641,40 @@ const AdminUsers: React.FC = () => {
                         <div>
                           <div>{user.email}</div>
                           <div className="text-xs text-muted-foreground md:hidden">
-                            {user.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'N/A'}
+                            {user.gender
+                              ? user.gender.charAt(0).toUpperCase() +
+                                user.gender.slice(1)
+                              : "N/A"}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                        <Badge
+                          variant={
+                            user.role === "admin" ? "default" : "secondary"
+                          }
+                        >
                           {user.role}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">{user.phone || '-'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {user.phone || "-"}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {user.gender ? (
                           <Badge variant="outline">
-                            {user.gender.charAt(0).toUpperCase() + user.gender.slice(1)}
+                            {user.gender.charAt(0).toUpperCase() +
+                              user.gender.slice(1)}
                           </Badge>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.is_verified ? 'default' : 'destructive'}>
-                          {user.is_verified ? 'Active' : 'Inactive'}
+                        <Badge
+                          variant={user.is_verified ? "default" : "destructive"}
+                        >
+                          {user.is_verified ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -650,25 +699,35 @@ const AdminUsers: React.FC = () => {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
-                                  variant={user.is_verified ? "destructive" : "default"}
+                                  variant={
+                                    user.is_verified ? "destructive" : "default"
+                                  }
                                   size="sm"
                                   onClick={() => handleToggleUserStatus(user)}
                                   className="h-8 w-8 p-0"
                                 >
-                                  {user.is_verified ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                  {user.is_verified ? (
+                                    <UserX className="w-4 h-4" />
+                                  ) : (
+                                    <UserCheck className="w-4 h-4" />
+                                  )}
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>{user.is_verified ? 'Deactivate user' : 'Activate user'}</p>
+                                <p>
+                                  {user.is_verified
+                                    ? "Deactivate user"
+                                    : "Activate user"}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -705,7 +764,9 @@ const AdminUsers: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
                   disabled={currentPage === 1}
                 >
                   Previous
@@ -713,7 +774,9 @@ const AdminUsers: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   Next
@@ -740,7 +803,9 @@ const AdminUsers: React.FC = () => {
                 <Input
                   id="first_name"
                   value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, first_name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -749,7 +814,9 @@ const AdminUsers: React.FC = () => {
                 <Input
                   id="last_name"
                   value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, last_name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -760,7 +827,9 @@ const AdminUsers: React.FC = () => {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
               />
             </div>
@@ -770,22 +839,33 @@ const AdminUsers: React.FC = () => {
                 id="password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 placeholder="At least 8 characters with upper, lower & number"
                 required
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Must contain at least one uppercase letter, one lowercase letter, and one number
+                Must contain at least one uppercase letter, one lowercase
+                letter, and one number
               </p>
             </div>
             <div>
               <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} disabled>
+              <Select
+                value={formData.role}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, role: value })
+                }
+                disabled
+              >
                 <SelectTrigger className="text-black">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin" className="text-black">Admin</SelectItem>
+                  <SelectItem value="admin" className="text-black">
+                    Admin
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -795,7 +875,9 @@ const AdminUsers: React.FC = () => {
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
                 placeholder="e.g., +1234567890 or 1234567890"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -808,25 +890,47 @@ const AdminUsers: React.FC = () => {
                 id="date_of_birth"
                 type="date"
                 value={formData.date_of_birth}
-                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, date_of_birth: e.target.value })
+                }
               />
             </div>
             <div>
               <Label htmlFor="gender">Gender (Optional)</Label>
-              <Select value={formData.gender || 'not_specified'} onValueChange={(value) => setFormData({ ...formData, gender: value === 'not_specified' ? '' : value })}>
+              <Select
+                value={formData.gender || "not_specified"}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    gender: value === "not_specified" ? "" : value,
+                  })
+                }
+              >
                 <SelectTrigger className="text-black">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="not_specified" className="text-black">Not specified</SelectItem>
-                  <SelectItem value="male" className="text-black">Male</SelectItem>
-                  <SelectItem value="female" className="text-black">Female</SelectItem>
-                  <SelectItem value="other" className="text-black">Other</SelectItem>
+                  <SelectItem value="not_specified" className="text-black">
+                    Not specified
+                  </SelectItem>
+                  <SelectItem value="male" className="text-black">
+                    Male
+                  </SelectItem>
+                  <SelectItem value="female" className="text-black">
+                    Female
+                  </SelectItem>
+                  <SelectItem value="other" className="text-black">
+                    Other
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit">Create Admin User</Button>
@@ -840,9 +944,7 @@ const AdminUsers: React.FC = () => {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information.
-            </DialogDescription>
+            <DialogDescription>Update user information.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateUser} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -851,7 +953,9 @@ const AdminUsers: React.FC = () => {
                 <Input
                   id="edit_first_name"
                   value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, first_name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -860,7 +964,9 @@ const AdminUsers: React.FC = () => {
                 <Input
                   id="edit_last_name"
                   value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, last_name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -871,29 +977,44 @@ const AdminUsers: React.FC = () => {
                 id="edit_email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
               />
             </div>
             <div>
-              <Label htmlFor="edit_password">Password (Leave blank to keep current)</Label>
+              <Label htmlFor="edit_password">
+                Password (Leave blank to keep current)
+              </Label>
               <Input
                 id="edit_password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 placeholder="Leave blank to keep current password"
               />
             </div>
             <div>
               <Label htmlFor="edit_role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+              <Select
+                value={formData.role}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, role: value })
+                }
+              >
                 <SelectTrigger className="text-black">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="customer" className="text-black">Customer</SelectItem>
-                  <SelectItem value="admin" className="text-black">Admin</SelectItem>
+                  <SelectItem value="customer" className="text-black">
+                    Customer
+                  </SelectItem>
+                  <SelectItem value="admin" className="text-black">
+                    Admin
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -903,7 +1024,9 @@ const AdminUsers: React.FC = () => {
                 id="edit_phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
                 placeholder="e.g., +1234567890 or 1234567890"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -916,25 +1039,47 @@ const AdminUsers: React.FC = () => {
                 id="edit_date_of_birth"
                 type="date"
                 value={formData.date_of_birth}
-                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, date_of_birth: e.target.value })
+                }
               />
             </div>
             <div>
               <Label htmlFor="edit_gender">Gender</Label>
-              <Select value={formData.gender || 'not_specified'} onValueChange={(value) => setFormData({ ...formData, gender: value === 'not_specified' ? '' : value })}>
+              <Select
+                value={formData.gender || "not_specified"}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    gender: value === "not_specified" ? "" : value,
+                  })
+                }
+              >
                 <SelectTrigger className="text-black">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="not_specified" className="text-black">Not specified</SelectItem>
-                  <SelectItem value="male" className="text-black">Male</SelectItem>
-                  <SelectItem value="female" className="text-black">Female</SelectItem>
-                  <SelectItem value="other" className="text-black">Other</SelectItem>
+                  <SelectItem value="not_specified" className="text-black">
+                    Not specified
+                  </SelectItem>
+                  <SelectItem value="male" className="text-black">
+                    Male
+                  </SelectItem>
+                  <SelectItem value="female" className="text-black">
+                    Female
+                  </SelectItem>
+                  <SelectItem value="other" className="text-black">
+                    Other
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit">Update User</Button>
@@ -944,7 +1089,10 @@ const AdminUsers: React.FC = () => {
       </Dialog>
 
       {/* Delete User Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

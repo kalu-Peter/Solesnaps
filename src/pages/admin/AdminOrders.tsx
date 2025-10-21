@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import useAuthenticatedFetch from "@/hooks/useAuthenticatedFetch";
+import { supabaseDb } from "@/lib/supabase";
 import {
   Card,
   CardContent,
@@ -85,43 +86,43 @@ const AdminOrders = () => {
   useEffect(() => {
     const loadOrders = async () => {
       if (!token) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
-        // Build query parameters
-        const searchParams = new URLSearchParams();
-        searchParams.append("page", currentPage.toString());
-        searchParams.append("limit", "10");
+
+        const filters: any = { limit: 10 };
         if (selectedStatus !== "all") {
-          searchParams.append("status", selectedStatus);
+          filters.status = selectedStatus;
         }
-        
-        const url = `/api/orders?${searchParams.toString()}`;
-        const response = await authenticatedFetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch orders: ${response.statusText}`);
+
+        const { data: orders, error } = await supabaseDb.getOrders(filters);
+
+        if (error) {
+          console.error("Failed to fetch orders:", error.message);
+          throw new Error("Failed to fetch orders");
         }
-        
-        const result = await response.json();
-        
+
+        console.log("Orders:", orders);
+
         // Convert string numbers to actual numbers
-        if (result.data?.orders) {
-          result.data.orders = result.data.orders.map((order: any) => ({
+        const processedOrders =
+          orders?.map((order: any) => ({
             ...order,
             total_amount: parseFloat(order.total_amount || 0),
-            subtotal_amount: order.subtotal_amount ? parseFloat(order.subtotal_amount) : undefined,
-            shipping_amount: order.shipping_amount ? parseFloat(order.shipping_amount) : undefined,
-          }));
-        }
-        
-        setOrders(result.data.orders || []);
-        setPagination(result.data.pagination || {
-          current_page: 1,
-          total_pages: 1,
-          total_orders: 0,
+            subtotal_amount: order.subtotal_amount
+              ? parseFloat(order.subtotal_amount)
+              : undefined,
+            shipping_amount: order.shipping_amount
+              ? parseFloat(order.shipping_amount)
+              : undefined,
+          })) || [];
+
+        setOrders(processedOrders);
+        setPagination({
+          current_page: currentPage,
+          total_pages: Math.ceil((orders?.length || 0) / 10),
+          total_orders: orders?.length || 0,
           per_page: 10,
         });
       } catch (err) {
@@ -201,60 +202,83 @@ const AdminOrders = () => {
 
   const handleViewOrder = async (order: Order) => {
     if (!token) return;
-    
+
     setLoadingOrderDetail(true);
     try {
-      const response = await authenticatedFetch(`/admin/orders/${order.id}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch order details: ${response.statusText}`);
+      const { data: orderDetail, error } = await supabaseDb.getOrder(
+        order.id.toString()
+      );
+
+      if (error) {
+        console.error("Failed to fetch order details:", error.message);
+        throw new Error("Failed to fetch order details");
       }
-      const result = await response.json();
-      setSelectedOrder(result.data.order);
+
+      console.log("Order details:", orderDetail);
+      setSelectedOrder(orderDetail);
       setIsOrderDetailOpen(true);
     } catch (err) {
       console.error("Error fetching order details:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch order details");
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch order details"
+      );
     } finally {
       setLoadingOrderDetail(false);
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+  const handleUpdateOrderStatus = async (
+    orderId: number,
+    newStatus: string
+  ) => {
     if (!token) return;
-    
+
     setUpdatingStatus(orderId);
     try {
-      const response = await authenticatedFetch(`/admin/orders/${orderId}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: newStatus }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to update order status: ${response.statusText}`);
+      const { error } = await supabaseDb.updateOrderStatus(
+        orderId.toString(),
+        newStatus
+      );
+
+      if (error) {
+        console.error("Failed to update order status:", error.message);
+        throw new Error("Failed to update order status");
       }
-      
+
       // Refresh orders list
-      const searchParams = new URLSearchParams();
-      searchParams.append("page", currentPage.toString());
-      searchParams.append("limit", "10");
+      const filters: any = { limit: 10 };
       if (selectedStatus !== "all") {
-        searchParams.append("status", selectedStatus);
+        filters.status = selectedStatus;
       }
-      
-      const refreshResponse = await authenticatedFetch(`/admin/orders?${searchParams.toString()}`);
-      if (refreshResponse.ok) {
-        const result = await refreshResponse.json();
-        setOrders(result.data.orders || []);
-        setPagination(result.data.pagination || {
-          current_page: 1,
-          total_pages: 1,
-          total_orders: 0,
+
+      const { data: refreshedOrders, error: refreshError } =
+        await supabaseDb.getOrders(filters);
+
+      if (!refreshError && refreshedOrders) {
+        const processedOrders = refreshedOrders.map((order: any) => ({
+          ...order,
+          total_amount: parseFloat(order.total_amount || 0),
+          subtotal_amount: order.subtotal_amount
+            ? parseFloat(order.subtotal_amount)
+            : undefined,
+          shipping_amount: order.shipping_amount
+            ? parseFloat(order.shipping_amount)
+            : undefined,
+        }));
+
+        setOrders(processedOrders);
+        setPagination({
+          current_page: currentPage,
+          total_pages: Math.ceil(refreshedOrders.length / 10),
+          total_orders: refreshedOrders.length,
           per_page: 10,
         });
       }
     } catch (err) {
       console.error("Error updating order status:", err);
-      setError(err instanceof Error ? err.message : "Failed to update order status");
+      setError(
+        err instanceof Error ? err.message : "Failed to update order status"
+      );
     } finally {
       setUpdatingStatus(null);
     }
@@ -268,7 +292,9 @@ const AdminOrders = () => {
   if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-muted-foreground">Please log in to access this page.</p>
+        <p className="text-muted-foreground">
+          Please log in to access this page.
+        </p>
       </div>
     );
   }
@@ -288,10 +314,7 @@ const AdminOrders = () => {
         <div className="text-center">
           <p className="text-destructive mb-2">Error loading orders</p>
           <p className="text-sm text-muted-foreground">{error}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="mt-4"
-          >
+          <Button onClick={() => window.location.reload()} className="mt-4">
             Retry
           </Button>
         </div>
@@ -393,7 +416,10 @@ const AdminOrders = () => {
                   className="pl-9"
                 />
               </div>
-              <Select value={selectedStatus} onValueChange={handleStatusFilterChange}>
+              <Select
+                value={selectedStatus}
+                onValueChange={handleStatusFilterChange}
+              >
                 <SelectTrigger className="w-[150px] text-black">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue />
@@ -454,7 +480,10 @@ const AdminOrders = () => {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    Ksh {parseFloat(order.total_amount?.toString() || "0").toFixed(2)}
+                    Ksh{" "}
+                    {parseFloat(order.total_amount?.toString() || "0").toFixed(
+                      2
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -470,7 +499,9 @@ const AdminOrders = () => {
                   <TableCell>
                     <Badge
                       variant="secondary"
-                      className={getPaymentStatusColor(order.payment_status || "pending")}
+                      className={getPaymentStatusColor(
+                        order.payment_status || "pending"
+                      )}
                     >
                       {order.payment_status || "pending"}
                     </Badge>
@@ -481,8 +512,8 @@ const AdminOrders = () => {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           className="h-8 w-8 p-0"
                           disabled={updatingStatus === order.id}
                         >
@@ -505,21 +536,27 @@ const AdminOrders = () => {
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Update Status</DropdownMenuLabel>
                         <DropdownMenuItem
-                          onClick={() => handleUpdateOrderStatus(order.id, "processing")}
+                          onClick={() =>
+                            handleUpdateOrderStatus(order.id, "processing")
+                          }
                           disabled={updatingStatus === order.id}
                         >
                           <Package className="mr-2 h-4 w-4" />
                           Mark Processing
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleUpdateOrderStatus(order.id, "shipped")}
+                          onClick={() =>
+                            handleUpdateOrderStatus(order.id, "shipped")
+                          }
                           disabled={updatingStatus === order.id}
                         >
                           <Truck className="mr-2 h-4 w-4" />
                           Mark Shipped
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleUpdateOrderStatus(order.id, "completed")}
+                          onClick={() =>
+                            handleUpdateOrderStatus(order.id, "completed")
+                          }
                           disabled={updatingStatus === order.id}
                         >
                           <CheckCircle className="mr-2 h-4 w-4" />
@@ -542,7 +579,9 @@ const AdminOrders = () => {
             <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>
               {selectedOrder
-                ? `Order ${selectedOrder.order_number || `#${selectedOrder.id}`}`
+                ? `Order ${
+                    selectedOrder.order_number || `#${selectedOrder.id}`
+                  }`
                 : "Order information"}
             </DialogDescription>
           </DialogHeader>
@@ -585,7 +624,9 @@ const AdminOrders = () => {
                     <div className="flex justify-between">
                       <span>Date:</span>
                       <span>
-                        {new Date(selectedOrder.created_at).toLocaleDateString()}
+                        {new Date(
+                          selectedOrder.created_at
+                        ).toLocaleDateString()}
                       </span>
                     </div>
                     {selectedOrder.tracking_number && (
@@ -623,30 +664,47 @@ const AdminOrders = () => {
                         </p>
                       </div>
                       <p className="font-medium">
-                        Ksh {(parseFloat(item.price?.toString() || "0") * item.quantity).toFixed(2)}
+                        Ksh{" "}
+                        {(
+                          parseFloat(item.price?.toString() || "0") *
+                          item.quantity
+                        ).toFixed(2)}
                       </p>
                     </div>
-                  )) || (
-                    <p className="text-muted-foreground">No items found</p>
-                  )}
-                  
+                  )) || <p className="text-muted-foreground">No items found</p>}
+
                   {selectedOrder.subtotal_amount && (
                     <div className="flex justify-between items-center pt-2 text-sm">
                       <span>Subtotal:</span>
-                      <span>Ksh {parseFloat(selectedOrder.subtotal_amount?.toString() || "0").toFixed(2)}</span>
+                      <span>
+                        Ksh{" "}
+                        {parseFloat(
+                          selectedOrder.subtotal_amount?.toString() || "0"
+                        ).toFixed(2)}
+                      </span>
                     </div>
                   )}
-                  
+
                   {selectedOrder.shipping_amount && (
                     <div className="flex justify-between items-center text-sm">
                       <span>Shipping:</span>
-                      <span>Ksh {parseFloat(selectedOrder.shipping_amount?.toString() || "0").toFixed(2)}</span>
+                      <span>
+                        Ksh{" "}
+                        {parseFloat(
+                          selectedOrder.shipping_amount?.toString() || "0"
+                        ).toFixed(2)}
+                      </span>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between items-center pt-2 font-medium border-t">
                     <span>Total:</span>
-                    <span>Ksh {parseFloat(selectedOrder.total_amount?.toString() || "0").toFixed(2)}</span>
+                    <span>
+                      Ksh{" "}
+                      {parseFloat(
+                        selectedOrder.total_amount?.toString() || "0"
+                      ).toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>

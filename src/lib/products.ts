@@ -1,3 +1,5 @@
+import { supabaseDb } from './supabase';
+
 export interface Product {
   id: string;
   name: string;
@@ -12,17 +14,23 @@ export interface Product {
 }
 
 export async function fetchProducts(): Promise<Product[]> {
-  const res = await fetch("/api/products");
-  if (!res.ok) throw new Error("Failed to fetch products");
-  const data = await res.json();
-  return data.data.products;
+  const { data: products, error } = await supabaseDb.getProducts();
+  if (error) {
+    console.error('Failed to fetch products:', error.message);
+    throw new Error("Failed to fetch products");
+  }
+  console.log('Products:', products);
+  return products || [];
 }
 
 export async function fetchProductById(id: number): Promise<Product> {
-  const res = await fetch(`/api/products/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch product");
-  const data = await res.json();
-  return data.data.product;
+  const { data: product, error } = await supabaseDb.getProduct(id.toString());
+  if (error) {
+    console.error('Failed to fetch product:', error.message);
+    throw new Error("Failed to fetch product");
+  }
+  console.log('Product:', product);
+  return product;
 }
 
 export async function fetchProductPrices(productIds: string[]): Promise<Record<string, number>> {

@@ -36,6 +36,7 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
+import { supabaseDb } from "@/lib/supabase";
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -97,44 +98,37 @@ const AdminAnalytics = () => {
       setError(null);
 
       // Fetch orders data
-      const ordersResponse = await fetch('/admin/orders', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: ordersData, error: ordersError } =
+        await supabaseDb.getOrders({});
 
       // Fetch users data
-      const usersResponse = await fetch('/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: usersData, error: usersError } = await supabaseDb.getUsers(
+        {}
+      );
 
       // Fetch products data
-      const productsResponse = await fetch('/admin/products', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data: productsData, error: productsError } =
+        await supabaseDb.getProducts({});
 
-      if (ordersResponse.ok && usersResponse.ok && productsResponse.ok) {
-        const ordersData = await ordersResponse.json();
-        const usersData = await usersResponse.json();
-        const productsData = await productsResponse.json();
-
-        const orders = ordersData.data.orders || [];
-        const users = usersData.data.users || [];
-        const products = productsData.data.products || [];
+      if (
+        !ordersError &&
+        !usersError &&
+        !productsError &&
+        ordersData &&
+        usersData &&
+        productsData
+      ) {
+        const orders = ordersData || [];
+        const users = usersData || [];
+        const products = productsData || [];
 
         // Calculate analytics
         const totalRevenue = orders.reduce((sum: number, order: any) => {
           return sum + parseFloat(order.total_amount || 0);
         }, 0);
 
-        const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+        const averageOrderValue =
+          orders.length > 0 ? totalRevenue / orders.length : 0;
 
         // Mock growth data (you can enhance this with historical data)
         const revenueGrowth = Math.floor(Math.random() * 30) + 5;
@@ -168,13 +162,15 @@ const AdminAnalytics = () => {
         setSalesData(mockSalesData);
 
         // Generate top products data
-        const mockTopProducts: TopProduct[] = products.slice(0, 5).map((product: any) => ({
-          id: product.id,
-          name: product.name,
-          sales: Math.floor(Math.random() * 200) + 50,
-          revenue: Math.floor(Math.random() * 10000) + 2000,
-          category: 'Shoes',
-        }));
+        const mockTopProducts: TopProduct[] = products
+          .slice(0, 5)
+          .map((product: any) => ({
+            id: product.id,
+            name: product.name,
+            sales: Math.floor(Math.random() * 200) + 50,
+            revenue: Math.floor(Math.random() * 10000) + 2000,
+            category: "Shoes",
+          }));
         setTopProducts(mockTopProducts);
 
         // Calculate orders by status
@@ -183,17 +179,21 @@ const AdminAnalytics = () => {
           statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
         });
 
-        const ordersByStatusData: OrdersByStatus[] = Object.entries(statusCounts).map(([status, count]) => ({
+        const ordersByStatusData: OrdersByStatus[] = Object.entries(
+          statusCounts
+        ).map(([status, count]) => ({
           status,
           count: count as number,
-          percentage: orders.length > 0 ? Math.round(((count as number) / orders.length) * 100) : 0,
+          percentage:
+            orders.length > 0
+              ? Math.round(((count as number) / orders.length) * 100)
+              : 0,
         }));
         setOrdersByStatus(ordersByStatusData);
       }
-
     } catch (err) {
-      console.error('Error fetching analytics data:', err);
-      setError('Failed to fetch analytics data');
+      console.error("Error fetching analytics data:", err);
+      setError("Failed to fetch analytics data");
     } finally {
       setLoading(false);
     }
@@ -204,9 +204,9 @@ const AdminAnalytics = () => {
   }, [token, timeRange]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
+    return new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
     }).format(amount);
   };
 
@@ -285,10 +285,12 @@ const AdminAnalytics = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analyticsData.totalRevenue)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(analyticsData.totalRevenue)}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-              +{analyticsData.revenueGrowth}% from last month
+              <TrendingUp className="mr-1 h-3 w-3 text-green-500" />+
+              {analyticsData.revenueGrowth}% from last month
             </p>
           </CardContent>
         </Card>
@@ -298,10 +300,12 @@ const AdminAnalytics = () => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.totalOrders}</div>
+            <div className="text-2xl font-bold">
+              {analyticsData.totalOrders}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-              +{analyticsData.orderGrowth}% from last month
+              <TrendingUp className="mr-1 h-3 w-3 text-green-500" />+
+              {analyticsData.orderGrowth}% from last month
             </p>
           </CardContent>
         </Card>
@@ -313,18 +317,22 @@ const AdminAnalytics = () => {
           <CardContent>
             <div className="text-2xl font-bold">{analyticsData.totalUsers}</div>
             <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-              +{analyticsData.userGrowth}% from last month
+              <TrendingUp className="mr-1 h-3 w-3 text-green-500" />+
+              {analyticsData.userGrowth}% from last month
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Order Value</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg. Order Value
+            </CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analyticsData.averageOrderValue)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(analyticsData.averageOrderValue)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Based on {analyticsData.totalOrders} orders
             </p>
@@ -342,9 +350,15 @@ const AdminAnalytics = () => {
           <CardContent>
             <div className="space-y-4">
               {ordersByStatus.map((item) => (
-                <div key={item.status} className="flex items-center justify-between">
+                <div
+                  key={item.status}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className={getStatusColor(item.status)}>
+                    <Badge
+                      variant="secondary"
+                      className={getStatusColor(item.status)}
+                    >
                       {item.status}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
@@ -352,7 +366,9 @@ const AdminAnalytics = () => {
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-medium">{item.percentage}%</span>
+                    <span className="text-sm font-medium">
+                      {item.percentage}%
+                    </span>
                   </div>
                 </div>
               ))}
@@ -364,7 +380,9 @@ const AdminAnalytics = () => {
         <Card>
           <CardHeader>
             <CardTitle>Top Products</CardTitle>
-            <CardDescription>Best performing products by revenue</CardDescription>
+            <CardDescription>
+              Best performing products by revenue
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -385,11 +403,15 @@ const AdminAnalytics = () => {
                         </div>
                         <div>
                           <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-muted-foreground">{product.category}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {product.category}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{product.sales}</TableCell>
+                    <TableCell className="text-right">
+                      {product.sales}
+                    </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(product.revenue)}
                     </TableCell>
@@ -405,16 +427,21 @@ const AdminAnalytics = () => {
       <Card>
         <CardHeader>
           <CardTitle>Sales Trend</CardTitle>
-          <CardDescription>Revenue and orders over the selected time period</CardDescription>
+          <CardDescription>
+            Revenue and orders over the selected time period
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="text-center text-muted-foreground">
               <BarChart3 className="h-12 w-12 mx-auto mb-2" />
               <p>Sales trend visualization</p>
-              <p className="text-sm">Chart visualization would be implemented here with a library like Chart.js or Recharts</p>
+              <p className="text-sm">
+                Chart visualization would be implemented here with a library
+                like Chart.js or Recharts
+              </p>
             </div>
-            
+
             {/* Simple data table as placeholder */}
             <Table>
               <TableHeader>
@@ -429,7 +456,9 @@ const AdminAnalytics = () => {
                 {salesData.slice(-7).map((data, index) => (
                   <TableRow key={index}>
                     <TableCell>{data.period}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(data.revenue)}
+                    </TableCell>
                     <TableCell className="text-right">{data.orders}</TableCell>
                     <TableCell className="text-right">{data.users}</TableCell>
                   </TableRow>

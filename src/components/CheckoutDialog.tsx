@@ -15,6 +15,7 @@ import { CreditCard, Phone, Truck, CheckCircle, Loader2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { DeliveryLocation } from "@/types/cart";
+import { supabaseDb } from "@/lib/supabase";
 
 interface CheckoutDialogProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ export default function CheckoutDialog({
         coupon_code: appliedCoupon?.code,
         discount_amount: couponDiscount,
         total_amount: total,
-        order_items: cartItems.map(item => ({
+        order_items: cartItems.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
           unit_price: currentPrices[item.id] || item.price,
@@ -94,34 +95,28 @@ export default function CheckoutDialog({
         })),
       };
 
-      const response = await fetch('/api/orders/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderData),
-      });
+      const { data: result, error } = await supabaseDb.createOrder(orderData);
 
-      if (!response.ok) {
-        throw new Error('Failed to create order');
+      if (error) {
+        console.error("Failed to create order:", error.message);
+        throw new Error("Failed to create order");
       }
 
-      const result = await response.json();
-      console.log('Order created successfully:', result);
-      
+      console.log("Order created successfully:", result);
+
       setOrderSuccess(true);
       clearCart(); // Clear the cart after successful order
-      
+
       // Close dialog after 2 seconds
       setTimeout(() => {
         setOrderSuccess(false);
         onClose();
       }, 2000);
-
     } catch (error) {
-      console.error('Order creation failed:', error);
-      setOrderError(error instanceof Error ? error.message : 'Failed to create order');
+      console.error("Order creation failed:", error);
+      setOrderError(
+        error instanceof Error ? error.message : "Failed to create order"
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -201,8 +196,12 @@ export default function CheckoutDialog({
             <h4 className="font-medium">Delivery Information</h4>
             <div className="text-sm">
               <p className="font-medium">{deliveryLocation.city_name}</p>
-              <p className="text-muted-foreground">{deliveryLocation.pickup_location}</p>
-              <p className="text-muted-foreground">{deliveryLocation.pickup_phone}</p>
+              <p className="text-muted-foreground">
+                {deliveryLocation.pickup_location}
+              </p>
+              <p className="text-muted-foreground">
+                {deliveryLocation.pickup_phone}
+              </p>
             </div>
           </div>
 
@@ -211,12 +210,17 @@ export default function CheckoutDialog({
             <h4 className="font-medium">Payment Method</h4>
             <RadioGroup
               value={paymentMethod}
-              onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+              onValueChange={(value) =>
+                setPaymentMethod(value as PaymentMethod)
+              }
               className="space-y-3"
             >
               <div className="flex items-center space-x-3 border rounded-lg p-3 hover:bg-muted/50">
                 <RadioGroupItem value="mpesa" id="mpesa" />
-                <Label htmlFor="mpesa" className="flex items-center gap-2 cursor-pointer flex-1">
+                <Label
+                  htmlFor="mpesa"
+                  className="flex items-center gap-2 cursor-pointer flex-1"
+                >
                   <Phone className="h-4 w-4 text-green-600" />
                   <div>
                     <div className="font-medium">M-Pesa</div>
@@ -226,10 +230,13 @@ export default function CheckoutDialog({
                   </div>
                 </Label>
               </div>
-              
+
               <div className="flex items-center space-x-3 border rounded-lg p-3 hover:bg-muted/50">
                 <RadioGroupItem value="pay_on_delivery" id="pay_on_delivery" />
-                <Label htmlFor="pay_on_delivery" className="flex items-center gap-2 cursor-pointer flex-1">
+                <Label
+                  htmlFor="pay_on_delivery"
+                  className="flex items-center gap-2 cursor-pointer flex-1"
+                >
                   <Truck className="h-4 w-4 text-blue-600" />
                   <div>
                     <div className="font-medium">Pay on Delivery</div>
@@ -250,7 +257,11 @@ export default function CheckoutDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isProcessing}>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isProcessing}
+          >
             Cancel
           </Button>
           <Button onClick={createOrder} disabled={isProcessing}>

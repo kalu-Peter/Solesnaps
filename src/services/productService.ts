@@ -1,5 +1,5 @@
 // API service for products
-const API_BASE_URL = '/api';
+import { supabaseDb } from '../lib/supabase';
 
 export interface Product {
   id: string;
@@ -76,64 +76,60 @@ export const productService = {
     sort_by?: 'name' | 'price' | 'created_at' | 'rating';
     sort_order?: 'asc' | 'desc';
   }): Promise<ProductsResponse> {
-    const queryParams = new URLSearchParams();
+    const { data: products, error } = await supabaseDb.getProducts(params);
     
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
+    if (error) {
+      console.error('Failed to fetch products:', error.message);
+      throw new Error(`Failed to fetch products: ${error.message}`);
     }
 
-    const url = `${API_BASE_URL}/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log('Products:', products);
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+    return {
+      message: 'Products retrieved successfully',
+      data: {
+        products: products || [],
+        pagination: {
+          current_page: 1,
+          total_pages: 1,
+          total_products: products?.length || 0,
+          per_page: products?.length || 0,
+          has_next: false,
+          has_prev: false,
+        },
+        filters: {
+          category: params?.category,
+          brand: params?.brand,
+          color: params?.color,
+          size: params?.size,
+          min_price: params?.min_price?.toString(),
+          max_price: params?.max_price?.toString(),
+          search: params?.search,
+        },
       },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch products: ${response.statusText}`);
-    }
-
-    return response.json();
+    };
   },
 
   // Get featured products
   async getFeaturedProducts(limit?: number): Promise<ProductsResponse> {
-    const queryParams = new URLSearchParams();
-    if (limit) {
-      queryParams.append('limit', limit.toString());
+    const { data: products, error } = await supabaseDb.getProducts({ featured: true, limit });
+    
+    if (error) {
+      console.error('Failed to fetch featured products:', error.message);
+      throw new Error(`Failed to fetch featured products: ${error.message}`);
     }
 
-    const url = `${API_BASE_URL}/products/featured${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log('Featured products:', products);
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch featured products: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    // Transform the response to match expected format
     return {
-      message: data.message,
+      message: 'Featured products retrieved successfully',
       data: {
-        products: data.data.products,
+        products: products || [],
         pagination: {
           current_page: 1,
           total_pages: 1,
-          total_products: data.data.products.length,
-          per_page: data.data.products.length,
+          total_products: products?.length || 0,
+          per_page: products?.length || 0,
           has_next: false,
           has_prev: false,
         },
@@ -144,56 +140,55 @@ export const productService = {
 
   // Get single product by ID
   async getProduct(id: number): Promise<{ message: string; data: { product: Product } }> {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch product: ${response.statusText}`);
+    const { data: product, error } = await supabaseDb.getProduct(id.toString());
+    
+    if (error) {
+      console.error('Failed to fetch product:', error.message);
+      throw new Error(`Failed to fetch product: ${error.message}`);
     }
 
-    return response.json();
+    console.log('Product:', product);
+
+    return {
+      message: 'Product retrieved successfully',
+      data: { product }
+    };
   },
 
   // Get new arrivals (products from last 15 days)
   async getNewArrivals(limit?: number): Promise<{ message: string; data: { products: Product[]; count: number } }> {
-    const queryParams = new URLSearchParams();
-    if (limit) {
-      queryParams.append('limit', limit.toString());
-    }
-
-    const url = `${API_BASE_URL}/products/new-arrivals${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const { data: products, error } = await supabaseDb.getProducts({ limit });
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch new arrivals: ${response.statusText}`);
+    if (error) {
+      console.error('Failed to fetch new arrivals:', error.message);
+      throw new Error(`Failed to fetch new arrivals: ${error.message}`);
     }
 
-    return response.json();
+    console.log('New arrivals:', products);
+
+    return {
+      message: 'New arrivals retrieved successfully',
+      data: { 
+        products: products || [], 
+        count: products?.length || 0 
+      }
+    };
   },
 
   // Get categories
   async getCategories(): Promise<{ message: string; data: { categories: Array<{ id: string; name: string; description?: string; image_url?: string }> } }> {
-    const response = await fetch(`${API_BASE_URL}/products/categories`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch categories: ${response.statusText}`);
+    const { data: categories, error } = await supabaseDb.getCategories();
+    
+    if (error) {
+      console.error('Failed to fetch categories:', error.message);
+      throw new Error(`Failed to fetch categories: ${error.message}`);
     }
 
-    return response.json();
+    console.log('Categories:', categories);
+
+    return {
+      message: 'Categories retrieved successfully',
+      data: { categories: categories || [] }
+    };
   },
 };

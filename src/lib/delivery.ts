@@ -1,8 +1,12 @@
 import { DeliveryLocation } from "@/types/cart";
+import { supabaseDb } from './supabase';
 
 export async function fetchDeliveryLocations(): Promise<DeliveryLocation[]> {
-  const res = await fetch("/api/delivery");
-  if (!res.ok) throw new Error("Failed to fetch delivery locations");
-  const data = await res.json();
-  return data.data.locations; // Extract locations from the nested response structure
+  const { data: locations, error } = await supabaseDb.getDeliveryLocations();
+  if (error) {
+    console.error('Failed to fetch delivery locations:', error.message);
+    throw new Error("Failed to fetch delivery locations");
+  }
+  console.log('Delivery locations:', locations);
+  return locations || [];
 }

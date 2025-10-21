@@ -1,5 +1,5 @@
 // API service for orders
-const API_BASE_URL = '/api';
+import { supabaseDb } from '../lib/supabase';
 
 export interface OrderItem {
   id: number;
@@ -51,7 +51,7 @@ const getAuthHeaders = (): HeadersInit => {
 };
 
 export const orderService = {
-  // Get orders for the authenticated user (doesn't require user ID in URL)
+  // Get orders for the authenticated user
   getUserOrders: async (userId: number, params?: {
     status?: string;
     page?: number;
@@ -59,101 +59,84 @@ export const orderService = {
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
   }): Promise<OrdersResponse> => {
-    const searchParams = new URLSearchParams();
+    const filters: any = { userId: userId.toString() };
     
     if (params?.status && params.status !== 'all') {
-      searchParams.append('status', params.status);
-    }
-    if (params?.page) {
-      searchParams.append('page', params.page.toString());
+      filters.status = params.status;
     }
     if (params?.limit) {
-      searchParams.append('limit', params.limit.toString());
-    }
-    if (params?.sort_by) {
-      searchParams.append('sort_by', params.sort_by);
-    }
-    if (params?.sort_order) {
-      searchParams.append('sort_order', params.sort_order);
+      filters.limit = params.limit;
     }
 
-    const queryString = searchParams.toString();
+    const { data: orders, error } = await supabaseDb.getOrders(filters);
     
-    // Try multiple endpoint patterns that are commonly used
-    const endpointsToTry = [
-      `${API_BASE_URL}/orders/my-orders${queryString ? `?${queryString}` : ''}`,
-      `${API_BASE_URL}/orders${queryString ? `?${queryString}` : ''}`,
-      `${API_BASE_URL}/user/orders${queryString ? `?${queryString}` : ''}`,
-      `${API_BASE_URL}/users/${userId}/orders${queryString ? `?${queryString}` : ''}`
-    ];
-
-    let lastError: Error | null = null;
-
-    for (const url of endpointsToTry) {
-      try {
-        console.log(`Trying endpoint: ${url}`);
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: getAuthHeaders(),
-        });
-
-        if (response.ok) {
-          return response.json();
-        } else if (response.status !== 404) {
-          // If it's not a 404, this might be the correct endpoint but with a different error
-          throw new Error(`Failed to fetch orders: ${response.statusText} (${response.status})`);
-        }
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        console.log(`Endpoint ${url} failed:`, lastError.message);
-      }
+    if (error) {
+      console.error('Failed to fetch user orders:', error.message);
+      throw new Error(`Failed to fetch user orders: ${error.message}`);
     }
 
-    // If all endpoints failed, throw the last error
-    throw lastError || new Error('All order endpoints failed');
+    console.log('User orders:', orders);
+
+    return {
+      message: 'Orders retrieved successfully',
+      data: {
+        orders: orders || [],
+        total: orders?.length || 0,
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+      },
+    };
   },
 
   // Get a specific order by ID
   getOrderById: async (orderId: number): Promise<{ message: string; data: { order: Order } }> => {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order: ${response.statusText}`);
+    const { data: order, error } = await supabaseDb.getOrder(orderId.toString());
+    
+    if (error) {
+      console.error('Failed to fetch order:', error.message);
+      throw new Error(`Failed to fetch order: ${error.message}`);
     }
 
-    return response.json();
+    console.log('Order:', order);
+
+    return {
+      message: 'Order retrieved successfully',
+      data: { order }
+    };
   },
 
   // Update order status (for admin use)
   updateOrderStatus: async (orderId: number, status: Order['status']): Promise<{ message: string; data: { order: Order } }> => {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update order status: ${response.statusText}`);
+    const { data: order, error } = await supabaseDb.updateOrderStatus(orderId.toString(), status);
+    
+    if (error) {
+      console.error('Failed to update order status:', error.message);
+      throw new Error(`Failed to update order status: ${error.message}`);
     }
 
-    return response.json();
+    console.log('Order status updated:', order);
+
+    return {
+      message: 'Order status updated successfully',
+      data: { order }
+    };
   },
 
   // Cancel an order
   cancelOrder: async (orderId: number): Promise<{ message: string; data: { order: Order } }> => {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to cancel order: ${response.statusText}`);
+    const { data: order, error } = await supabaseDb.updateOrderStatus(orderId.toString(), 'cancelled');
+    
+    if (error) {
+      console.error('Failed to cancel order:', error.message);
+      throw new Error(`Failed to cancel order: ${error.message}`);
     }
 
-    return response.json();
+    console.log('Order cancelled:', order);
+
+    return {
+      message: 'Order cancelled successfully',
+      data: { order }
+    };
   },
 
   // Create a new order
@@ -167,44 +150,80 @@ export const orderService = {
     shipping_address: string;
     payment_method: string;
   }): Promise<{ message: string; data: { order: Order } }> => {
-    const response = await fetch(`${API_BASE_URL}/orders`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(orderData),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create order: ${response.statusText}`);
+    const { data: order, error } = await supabaseDb.createOrder(orderData);
+    
+    if (error) {
+      console.error('Failed to create order:', error.message);
+      throw new Error(`Failed to create order: ${error.message}`);
     }
 
-    return response.json();
+    console.log('Order created:', order);
+
+    return {
+      message: 'Order created successfully',
+      data: { order }
+    };
   },
 
   // Track an order by tracking number
   trackOrder: async (trackingNumber: string): Promise<{ message: string; data: { tracking: any } }> => {
-    const response = await fetch(`${API_BASE_URL}/orders/track/${trackingNumber}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to track order: ${response.statusText}`);
+    // For now, we'll get all orders and find by tracking number
+    // This should be implemented properly in the supabaseDb methods
+    const { data: orders, error } = await supabaseDb.getOrders();
+    
+    if (error) {
+      console.error('Failed to track order:', error.message);
+      throw new Error(`Failed to track order: ${error.message}`);
     }
 
-    return response.json();
+    const trackedOrder = orders?.find(order => order.tracking_number === trackingNumber);
+    
+    if (!trackedOrder) {
+      throw new Error('Order not found');
+    }
+
+    console.log('Tracked order:', trackedOrder);
+
+    return {
+      message: 'Order tracked successfully',
+      data: { tracking: trackedOrder }
+    };
   },
 
   // Reorder items from a previous order
   reorder: async (orderId: number): Promise<{ message: string; data: { order: Order } }> => {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/reorder`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to reorder: ${response.statusText}`);
+    // Get the original order
+    const { data: originalOrder, error: getError } = await supabaseDb.getOrder(orderId.toString());
+    
+    if (getError) {
+      console.error('Failed to get original order:', getError.message);
+      throw new Error(`Failed to get original order: ${getError.message}`);
     }
 
-    return response.json();
+    // Create a new order with the same items
+    const orderData = {
+      items: originalOrder.order_items.map((item: any) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+      })),
+      shipping_address: originalOrder.shipping_address,
+      payment_method: originalOrder.payment_method,
+    };
+
+    const { data: newOrder, error: createError } = await supabaseDb.createOrder(orderData);
+    
+    if (createError) {
+      console.error('Failed to reorder:', createError.message);
+      throw new Error(`Failed to reorder: ${createError.message}`);
+    }
+
+    console.log('Reorder created:', newOrder);
+
+    return {
+      message: 'Reorder created successfully',
+      data: { order: newOrder }
+    };
   },
 };
