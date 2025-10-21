@@ -81,7 +81,7 @@ export const supabaseDb = {
       .from('products')
       .select(`
         *,
-        categories(name, slug),
+        categories(id, name),
         product_images(*)
       `)
       .eq('is_active', true);

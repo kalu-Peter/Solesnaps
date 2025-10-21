@@ -29,13 +29,15 @@ const Shoes = () => {
   const [shoes, setShoes] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Handle URL parameters for gender filtering
   useEffect(() => {
-    const genderParam = searchParams.get('gender');
-    if (genderParam && ['male', 'female', 'unisex'].includes(genderParam)) {
+    const genderParam = searchParams.get("gender");
+    if (genderParam && ["male", "female", "unisex"].includes(genderParam)) {
       setSelectedGender(genderParam);
     }
   }, [searchParams]);
@@ -45,69 +47,105 @@ const Shoes = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
+        console.log("🔍 Starting to fetch categories and products...");
+
         // Fetch all categories first
         const categoriesResponse = await productService.getCategories();
+        console.log("📂 Categories response:", categoriesResponse);
         const allCategories = categoriesResponse.data.categories;
-        
+
         // Filter for shoe-related categories
-        const shoeCategories = allCategories.filter(cat => 
-          cat.name.toLowerCase().includes('shoe') || 
-          cat.name.toLowerCase().includes('sneaker') ||
-          cat.name.toLowerCase().includes('boot') ||
-          cat.name.toLowerCase().includes('sandal') ||
-          cat.name.toLowerCase().includes('slipper') ||
-          cat.name.toLowerCase().includes('footwear')
+        const shoeCategories = allCategories.filter((cat) => {
+          const name = cat.name.toLowerCase();
+          return (
+            name.includes("shoe") ||
+            name.includes("sneaker") ||
+            name.includes("boot") ||
+            name.includes("sandal") ||
+            name.includes("slipper") ||
+            name.includes("footwear")
+          );
+        });
+
+        console.log(
+          "👟 Shoe categories found:",
+          shoeCategories.map((c) => c.name)
         );
-        
+
         setCategories(shoeCategories);
 
         // Fetch all products and then filter
-        const productsResponse = await productService.getProducts({ 
+        console.log("👟 Fetching products...");
+        const productsResponse = await productService.getProducts({
           limit: 100,
-          sort_by: 'created_at',
-          sort_order: 'desc'
+          sort_by: "created_at",
+          sort_order: "desc",
         });
-        
-        let filteredProducts = productsResponse.data.products;
+        console.log("📦 Products response:", productsResponse);
 
-        // Filter by shoe categories if we found any
+        let filteredProducts = productsResponse.data.products;
+        console.log("🔢 Total products fetched:", filteredProducts?.length);
+
+        // Filter by shoe categories if we found any, otherwise show all products
         if (shoeCategories.length > 0) {
-          filteredProducts = filteredProducts.filter(product =>
-            shoeCategories.some(cat => cat.id === product.category?.id)
+          filteredProducts = filteredProducts.filter((product) =>
+            shoeCategories.some(
+              (cat) =>
+                cat.id === (product.categories?.id || product.category?.id)
+            )
+          );
+          console.log(
+            "🎯 Filtered products by shoe categories:",
+            filteredProducts?.length
+          );
+        } else {
+          // If no shoe categories found, show all products for better user experience
+          console.log(
+            "No shoe-specific categories found, showing all products"
           );
         }
 
         // Apply gender filter if specified
-        const genderFilter = searchParams.get('gender');
-        if (genderFilter && ['male', 'female', 'unisex'].includes(genderFilter)) {
-          filteredProducts = filteredProducts.filter(product => 
-            product.gender === genderFilter
+        const genderFilter = searchParams.get("gender");
+        if (
+          genderFilter &&
+          ["male", "female", "unisex"].includes(genderFilter)
+        ) {
+          filteredProducts = filteredProducts.filter(
+            (product) => product.gender === genderFilter
           );
         }
 
         // Apply category filter if specified
-        if (selectedCategory !== 'all') {
-          const categoryToFilter = shoeCategories.find(cat => cat.id === selectedCategory);
+        if (selectedCategory !== "all") {
+          const categoryToFilter = shoeCategories.find(
+            (cat) => cat.id === selectedCategory
+          );
           if (categoryToFilter) {
-            filteredProducts = filteredProducts.filter(product => 
-              product.category?.id === categoryToFilter.id
+            filteredProducts = filteredProducts.filter(
+              (product) =>
+                (product.categories?.id || product.category?.id) ===
+                categoryToFilter.id
             );
           }
         }
-        
+
+        console.log("✅ Final filtered products:", filteredProducts?.length);
         setShoes(filteredProducts);
       } catch (err) {
-        console.error('Failed to fetch shoes:', err);
-        setError('Failed to load shoes. Please try again later.');
-        
+        console.error("❌ Failed to fetch shoes:", err);
+        setError("Failed to load shoes. Please try again later.");
+
         // Try to get any products as fallback
         try {
-          const fallbackResponse = await productService.getProducts({ limit: 20 });
+          const fallbackResponse = await productService.getProducts({
+            limit: 20,
+          });
           setShoes(fallbackResponse.data.products);
           setError(null); // Clear error if fallback works
         } catch (fallbackErr) {
-          console.error('Fallback fetch also failed:', fallbackErr);
+          console.error("Fallback fetch also failed:", fallbackErr);
           setShoes([]); // Set empty array if everything fails
         }
       } finally {
@@ -147,10 +185,10 @@ const Shoes = () => {
                   Showing {shoes.length} products
                 </span>
                 <div className="h-4 w-px bg-border hidden lg:block"></div>
-                
+
                 {/* Category Filter */}
                 <div className="min-w-[140px]">
-                  <Select 
+                  <Select
                     value={selectedCategory}
                     onValueChange={setSelectedCategory}
                   >
@@ -170,14 +208,14 @@ const Shoes = () => {
 
                 {/* Gender Filter */}
                 <div className="min-w-[130px]">
-                  <Select 
+                  <Select
                     value={selectedGender}
                     onValueChange={(value) => {
                       setSelectedGender(value);
                       if (value === "all") {
-                        searchParams.delete('gender');
+                        searchParams.delete("gender");
                       } else {
-                        searchParams.set('gender', value);
+                        searchParams.set("gender", value);
                       }
                       setSearchParams(searchParams);
                     }}
@@ -197,9 +235,15 @@ const Shoes = () => {
                 {/* Size Filter */}
                 <div className="min-w-[120px]">
                   <Select
-                    value={selectedSizes.length > 0 ? `${selectedSizes.length} size${selectedSizes.length > 1 ? 's' : ''}` : "Size"}
+                    value={
+                      selectedSizes.length > 0
+                        ? `${selectedSizes.length} size${
+                            selectedSizes.length > 1 ? "s" : ""
+                          }`
+                        : "Size"
+                    }
                     onValueChange={() => {}} // Handled in content
-                  > 
+                  >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Size" /> Size
                     </SelectTrigger>
@@ -210,7 +254,9 @@ const Shoes = () => {
                           <span className="text-xs font-medium">Format:</span>
                           <div className="flex border border-border rounded overflow-hidden">
                             <Button
-                              variant={sizeFormat === "US" ? "default" : "ghost"}
+                              variant={
+                                sizeFormat === "US" ? "default" : "ghost"
+                              }
                               size="sm"
                               className="h-6 px-3 text-xs rounded-none"
                               onClick={() => setSizeFormat("US")}
@@ -218,7 +264,9 @@ const Shoes = () => {
                               US
                             </Button>
                             <Button
-                              variant={sizeFormat === "UK" ? "default" : "ghost"}
+                              variant={
+                                sizeFormat === "UK" ? "default" : "ghost"
+                              }
                               size="sm"
                               className="h-6 px-3 text-xs rounded-none"
                               onClick={() => setSizeFormat("UK")}
@@ -227,14 +275,16 @@ const Shoes = () => {
                             </Button>
                           </div>
                         </div>
-                        
+
                         {/* Size Grid */}
                         <div className="grid grid-cols-3 gap-1">
                           {(sizeFormat === "US"
                             ? ["7", "8", "9", "10", "11", "12"]
                             : ["6", "7", "8", "9", "10", "11"]
                           ).map((size) => {
-                            const isSelected = selectedSizes.includes(`${sizeFormat}-${size}`);
+                            const isSelected = selectedSizes.includes(
+                              `${sizeFormat}-${size}`
+                            );
                             return (
                               <Button
                                 key={size}
@@ -255,12 +305,15 @@ const Shoes = () => {
                             );
                           })}
                         </div>
-                        
+
                         {/* Selected Sizes & Clear */}
                         {selectedSizes.length > 0 && (
                           <div className="pt-2 border-t border-border">
                             <div className="text-xs text-muted-foreground mb-2">
-                              Selected: {selectedSizes.map((size) => size.split("-")[1]).join(", ")}
+                              Selected:{" "}
+                              {selectedSizes
+                                .map((size) => size.split("-")[1])
+                                .join(", ")}
                             </div>
                             <Button
                               variant="ghost"
@@ -286,8 +339,12 @@ const Shoes = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="featured">Featured</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price-high">
+                      Price: High to Low
+                    </SelectItem>
                     <SelectItem value="name">Name A-Z</SelectItem>
                   </SelectContent>
                 </Select>
@@ -299,18 +356,22 @@ const Shoes = () => {
           {loading ? (
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-80 bg-muted animate-pulse rounded-lg"></div>
+                <div
+                  key={i}
+                  className="h-80 bg-muted animate-pulse rounded-lg"
+                ></div>
               ))}
             </div>
           ) : error && shoes.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Unable to load shoes. Please try again later.</p>
+              <p className="text-muted-foreground">
+                Unable to load shoes. Please try again later.
+              </p>
             </div>
           ) : (
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            
               {shoes.map((shoe) => (
-                <ProductCard 
+                <ProductCard
                   key={shoe.id}
                   id={shoe.id}
                   name={shoe.name}
@@ -320,15 +381,17 @@ const Shoes = () => {
                   brand={shoe.brand}
                   colors={Array.isArray(shoe.colors) ? shoe.colors : []}
                   sizes={Array.isArray(shoe.sizes) ? shoe.sizes : []}
-                  images={shoe.product_images?.map(img => ({
-                    id: parseInt(img.id) || 0,
-                    image_url: img.url, // Map 'url' from API to 'image_url' expected by ProductCard
-                    alt_text: img.alt_text,
-                    is_primary: img.is_primary,
-                    sort_order: img.sort_order
-                  })) || []}
-                  category_name={shoe.category?.name}
-                  category_id={shoe.category?.id}
+                  images={
+                    shoe.product_images?.map((img) => ({
+                      id: parseInt(img.id) || 0,
+                      image_url: img.url, // Map 'url' from API to 'image_url' expected by ProductCard
+                      alt_text: img.alt_text,
+                      is_primary: img.is_primary,
+                      sort_order: img.sort_order,
+                    })) || []
+                  }
+                  category_name={shoe.categories?.name || shoe.category?.name}
+                  category_id={shoe.categories?.id || shoe.category?.id}
                   is_featured={shoe.is_featured}
                   is_active={shoe.is_active}
                   created_at={shoe.created_at}

@@ -178,7 +178,7 @@ const AdminUsers: React.FC = () => {
         },
       };
       setUsers(data.data?.users || []);
-      setTotalPages(data.pagination?.totalPages || 1);
+      setTotalPages(data.data.pagination?.totalPages || 1);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       if (!authError) {
