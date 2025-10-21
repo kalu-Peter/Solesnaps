@@ -29,6 +29,10 @@ export interface Product {
     id: string;
     name: string;
   };
+  categories?: {
+    id: string;
+    name: string;
+  };
   category_name?: string;
   category_id?: string;
   is_featured: boolean;

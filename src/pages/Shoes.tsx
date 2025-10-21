@@ -48,11 +48,8 @@ const Shoes = () => {
         setLoading(true);
         setError(null);
 
-        console.log("🔍 Starting to fetch categories and products...");
-
         // Fetch all categories first
         const categoriesResponse = await productService.getCategories();
-        console.log("📂 Categories response:", categoriesResponse);
         const allCategories = categoriesResponse.data.categories;
 
         // Filter for shoe-related categories
@@ -68,24 +65,16 @@ const Shoes = () => {
           );
         });
 
-        console.log(
-          "👟 Shoe categories found:",
-          shoeCategories.map((c) => c.name)
-        );
-
         setCategories(shoeCategories);
 
         // Fetch all products and then filter
-        console.log("👟 Fetching products...");
         const productsResponse = await productService.getProducts({
           limit: 100,
           sort_by: "created_at",
           sort_order: "desc",
         });
-        console.log("📦 Products response:", productsResponse);
 
         let filteredProducts = productsResponse.data.products;
-        console.log("🔢 Total products fetched:", filteredProducts?.length);
 
         // Filter by shoe categories if we found any, otherwise show all products
         if (shoeCategories.length > 0) {
@@ -95,15 +84,8 @@ const Shoes = () => {
                 cat.id === (product.categories?.id || product.category?.id)
             )
           );
-          console.log(
-            "🎯 Filtered products by shoe categories:",
-            filteredProducts?.length
-          );
         } else {
           // If no shoe categories found, show all products for better user experience
-          console.log(
-            "No shoe-specific categories found, showing all products"
-          );
         }
 
         // Apply gender filter if specified
@@ -131,10 +113,9 @@ const Shoes = () => {
           }
         }
 
-        console.log("✅ Final filtered products:", filteredProducts?.length);
         setShoes(filteredProducts);
       } catch (err) {
-        console.error("❌ Failed to fetch shoes:", err);
+        console.error("Failed to fetch shoes:", err);
         setError("Failed to load shoes. Please try again later.");
 
         // Try to get any products as fallback
