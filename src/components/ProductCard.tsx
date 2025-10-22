@@ -164,7 +164,7 @@ export default function ProductCard(props: ProductCardProps) {
     <Card className="group overflow-hidden border-border hover:shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1">
       <CardContent className="p-0">
         <div
-          className="aspect-square overflow-hidden bg-muted cursor-pointer"
+          className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
           onClick={handleProductClick}
         >
           <img
@@ -172,8 +172,39 @@ export default function ProductCard(props: ProductCardProps) {
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          {/* Add to Cart Button - Overlay on Image */}
+          <Button
+            size="icon"
+            className={`absolute top-2 right-2 rounded-full transition-all duration-300 h-8 w-8 sm:h-9 sm:w-9 shadow-lg ${
+              isAdded
+                ? "bg-green-500 hover:bg-green-600"
+                : "bg-white/90 hover:bg-white text-gray-800 hover:text-gray-900"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering product click
+              handleAddToCart();
+            }}
+            disabled={isAdded}
+          >
+            {isAdded ? (
+              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+            ) : (
+              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+            )}
+          </Button>
         </div>
         <div className="p-2 sm:p-4 space-y-2 sm:space-y-3">
+          {/* Price moved above category */}
+          <div className="flex flex-col">
+            <span className="text-lg sm:text-2xl font-bold text-primary">
+              {displayPrice}
+            </span>
+            {originalPrice && (
+              <span className="text-sm text-muted-foreground line-through">
+                {originalPrice}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted uppercase tracking-wider truncate">
             {displayCategory}
           </p>
@@ -183,34 +214,6 @@ export default function ProductCard(props: ProductCardProps) {
           >
             {name}
           </h3>
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-lg sm:text-2xl font-bold text-primary">
-                {displayPrice}
-              </span>
-              {originalPrice && (
-                <span className="text-sm text-muted-foreground line-through">
-                  {originalPrice}
-                </span>
-              )}
-            </div>
-            <Button
-              size="icon"
-              className={`rounded-full transition-all duration-300 h-8 w-8 sm:h-10 sm:w-10 ${
-                isAdded
-                  ? "bg-green-500 hover:bg-green-600"
-                  : "bg-primary hover:bg-accent"
-              }`}
-              onClick={handleAddToCart}
-              disabled={isAdded}
-            >
-              {isAdded ? (
-                <Check className="h-3 w-3 sm:h-4 sm:w-4" />
-              ) : (
-                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-              )}
-            </Button>
-          </div>
         </div>
       </CardContent>
     </Card>
