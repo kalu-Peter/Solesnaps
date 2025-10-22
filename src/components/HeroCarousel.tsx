@@ -58,11 +58,15 @@ const carouselSlides: CarouselSlide[] = [
 const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+
+  // Create extended slides array for infinite loop
+  const extendedSlides = [...carouselSlides, ...carouselSlides.slice(0, 1)]; // Add first slide at the end
 
   // Debug logging
   useEffect(() => {
     console.log(
-      `Current slide: ${currentSlide}, Total slides: ${carouselSlides.length}`
+      `Current slide: ${currentSlide}, Total slides: ${carouselSlides.length}, Extended: ${extendedSlides.length}`
     );
   }, [currentSlide]);
 
@@ -71,29 +75,52 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
     if (!isAutoPlay) return;
 
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+      goToNext();
     }, 5000); // Change slide every 5 seconds
 
     return () => clearInterval(interval);
   }, [isAutoPlay]);
 
+  // Handle infinite loop reset
+  useEffect(() => {
+    if (currentSlide === carouselSlides.length) {
+      // We're at the duplicate first slide
+      setTimeout(() => {
+        setIsTransitioning(false);
+        setCurrentSlide(0);
+        setTimeout(() => {
+          setIsTransitioning(true);
+        }, 50);
+      }, 700); // Match transition duration
+    }
+  }, [currentSlide]);
+
   const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-    setIsAutoPlay(false);
-    // Resume auto-play after 10 seconds of inactivity
-    setTimeout(() => setIsAutoPlay(true), 10000);
+    if (index >= 0 && index < carouselSlides.length) {
+      setCurrentSlide(index);
+      setIsAutoPlay(false);
+      // Resume auto-play after 10 seconds of inactivity
+      setTimeout(() => setIsAutoPlay(true), 10000);
+    }
   };
 
   const goToPrevious = () => {
-    setCurrentSlide(
-      (prev) => (prev - 1 + carouselSlides.length) % carouselSlides.length
-    );
+    if (currentSlide === 0) {
+      // Jump to the last real slide
+      setIsTransitioning(false);
+      setCurrentSlide(carouselSlides.length - 1);
+      setTimeout(() => {
+        setIsTransitioning(true);
+      }, 50);
+    } else {
+      setCurrentSlide((prev) => prev - 1);
+    }
     setIsAutoPlay(false);
     setTimeout(() => setIsAutoPlay(true), 10000);
   };
 
   const goToNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+    setCurrentSlide((prev) => prev + 1);
     setIsAutoPlay(false);
     setTimeout(() => setIsAutoPlay(true), 10000);
   };
@@ -104,12 +131,16 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
       <div className="relative h-full">
         {/* Slides */}
         <div
-          className="flex h-full transition-transform duration-700 ease-in-out"
+          className={`flex h-full ${
+            isTransitioning
+              ? "transition-transform duration-700 ease-in-out"
+              : ""
+          }`}
           style={{
             transform: `translateX(-${currentSlide * 100}%)`,
           }}
         >
-          {carouselSlides.map((slide, index) => (
+          {extendedSlides.map((slide, index) => (
             <div
               key={slide.id}
               className="relative w-full h-full flex-shrink-0 bg-gradient-to-br from-primary to-accent"
@@ -205,7 +236,8 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
               onClick={() => goToSlide(index)}
               className={cn(
                 "w-3 h-3 rounded-full transition-colors",
-                currentSlide === index
+                currentSlide === index ||
+                  (currentSlide === carouselSlides.length && index === 0)
                   ? "bg-white"
                   : "bg-white/50 hover:bg-white/70"
               )}
@@ -219,7 +251,13 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
           <div
             className="h-full bg-primary transition-all duration-700 ease-in-out"
             style={{
-              width: `${((currentSlide + 1) / carouselSlides.length) * 100}%`,
+              width: `${
+                ((currentSlide >= carouselSlides.length
+                  ? 1
+                  : currentSlide + 1) /
+                  carouselSlides.length) *
+                100
+              }%`,
             }}
           />
         </div>

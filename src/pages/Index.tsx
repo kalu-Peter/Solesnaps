@@ -96,7 +96,7 @@ const Index = () => {
               <div>
                 <h3 className="font-semibold text-foreground">Free Shipping</h3>
                 <p className="text-sm text-muted-foreground">
-                  On orders over $50
+                  On orders over KES 5000
                 </p>
               </div>
             </div>
