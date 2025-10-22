@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
+import ProductDetails from "@/components/ProductDetails";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -23,6 +24,8 @@ import { productService, Product } from "@/services/productService";
 
 const Shoes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false);
   const [sizeFormat, setSizeFormat] = useState<"US" | "UK">("US");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedGender, setSelectedGender] = useState<string>("all");
@@ -136,6 +139,16 @@ const Shoes = () => {
 
     fetchShoesAndCategories();
   }, [searchParams, selectedCategory]);
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsProductDetailsOpen(true);
+  };
+
+  const handleCloseProductDetails = () => {
+    setIsProductDetailsOpen(false);
+    setSelectedProduct(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -377,6 +390,7 @@ const Shoes = () => {
                   is_active={shoe.is_active}
                   created_at={shoe.created_at}
                   updated_at={shoe.updated_at}
+                  onProductClick={handleProductClick}
                 />
               ))}
             </div>
@@ -392,6 +406,26 @@ const Shoes = () => {
           )}
         </div>
       </section>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <ProductDetails
+          product={{
+            ...selectedProduct,
+            price: String(selectedProduct.price), // Convert number to string
+            images:
+              selectedProduct.product_images?.map((img) => ({
+                id: parseInt(img.id) || 0,
+                image_url: img.url,
+                alt_text: img.alt_text,
+                is_primary: img.is_primary,
+                sort_order: img.sort_order,
+              })) || [],
+          }}
+          isOpen={isProductDetailsOpen}
+          onClose={handleCloseProductDetails}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
+import ProductDetails from "@/components/ProductDetails";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +19,8 @@ import { Percent, Flame, Timer, Tag } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const Sale = () => {
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState({
     days: 2,
     hours: 14,
@@ -50,6 +53,16 @@ const Sale = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  const handleProductClick = (product: any) => {
+    setSelectedProduct(product);
+    setIsProductDetailsOpen(true);
+  };
+
+  const handleCloseProductDetails = () => {
+    setIsProductDetailsOpen(false);
+    setSelectedProduct(null);
+  };
 
   const saleProducts = [
     {
@@ -318,6 +331,7 @@ const Sale = () => {
                   created_at={product.created_at}
                   updated_at={product.updated_at}
                   originalPrice={product.originalPrice}
+                  onProductClick={handleProductClick}
                 />
 
                 {/* Discount Badge */}
@@ -387,6 +401,26 @@ const Sale = () => {
           </div>
         </div>
       </section>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <ProductDetails
+          product={{
+            ...selectedProduct,
+            price: String(selectedProduct.price), // Convert number to string
+            images:
+              selectedProduct.images?.map((img: any) => ({
+                id: parseInt(img.id) || 0,
+                image_url: img.image_url || img.url,
+                alt_text: img.alt_text,
+                is_primary: img.is_primary,
+                sort_order: img.sort_order,
+              })) || [],
+          }}
+          isOpen={isProductDetailsOpen}
+          onClose={handleCloseProductDetails}
+        />
+      )}
     </div>
   );
 };

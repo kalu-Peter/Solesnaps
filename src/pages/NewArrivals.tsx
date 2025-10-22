@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
+import ProductDetails from "@/components/ProductDetails";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +16,8 @@ import { useState, useEffect } from "react";
 import { productService, Product } from "@/services/productService";
 
 const NewArrivals = () => {
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false);
   const [newProducts, setNewProducts] = useState<Product[]>([]);
   const [sortedProducts, setSortedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,6 +131,16 @@ const NewArrivals = () => {
     // Sort the filtered products
     setSortedProducts(sortProducts(filteredProducts, sortBy));
   }, [newProducts, sortBy, selectedCategory]);
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsProductDetailsOpen(true);
+  };
+
+  const handleCloseProductDetails = () => {
+    setIsProductDetailsOpen(false);
+    setSelectedProduct(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -333,6 +346,7 @@ const NewArrivals = () => {
                     is_active={product.is_active}
                     created_at={product.created_at}
                     updated_at={product.updated_at}
+                    onProductClick={handleProductClick}
                   />
                   {/* New Badge Overlay */}
                   <div className="absolute top-3 left-3 z-10">
@@ -376,6 +390,26 @@ const NewArrivals = () => {
           </div>
         </div>
       </section>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <ProductDetails
+          product={{
+            ...selectedProduct,
+            price: String(selectedProduct.price), // Convert number to string
+            images:
+              selectedProduct.product_images?.map((img) => ({
+                id: parseInt(img.id) || 0,
+                image_url: img.url,
+                alt_text: img.alt_text,
+                is_primary: img.is_primary,
+                sort_order: img.sort_order,
+              })) || [],
+          }}
+          isOpen={isProductDetailsOpen}
+          onClose={handleCloseProductDetails}
+        />
+      )}
     </div>
   );
 };

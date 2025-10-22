@@ -9,7 +9,11 @@ interface CartItemProps {
   loadingPrice?: boolean;
 }
 
-export default function CartItem({ item, currentPrice, loadingPrice }: CartItemProps) {
+export default function CartItem({
+  item,
+  currentPrice,
+  loadingPrice,
+}: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
 
   const handleQuantityChange = (newQuantity: number) => {
@@ -19,9 +23,10 @@ export default function CartItem({ item, currentPrice, loadingPrice }: CartItemP
   // Use current price from API if available, otherwise fallback to cart price
   const displayPrice = currentPrice !== undefined ? currentPrice : item.price;
   const subtotal = displayPrice * item.quantity;
-  
+
   // Check if price has changed from what's stored in cart
-  const priceChanged = currentPrice !== undefined && currentPrice !== item.price;
+  const priceChanged =
+    currentPrice !== undefined && currentPrice !== item.price;
 
   return (
     <div className="flex gap-4 py-4 border-b border-border last:border-b-0">
@@ -31,6 +36,10 @@ export default function CartItem({ item, currentPrice, loadingPrice }: CartItemP
           src={item.image}
           alt={item.name}
           className="w-16 h-16 object-cover rounded-md bg-muted"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src =
+              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOTk5IiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+PC9zdmc+";
+          }}
         />
       </div>
 

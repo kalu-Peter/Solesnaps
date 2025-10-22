@@ -4,10 +4,6 @@ import ProductDetails from "@/components/ProductDetails";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import heroBanner from "@/assets/B.png";
-import shoe1 from "@/assets/shoe-1.jpg";
-import shoe2 from "@/assets/shoe-2.jpg";
-import headphones from "@/assets/headphones.jpg";
-import smartwatch from "@/assets/smartwatch.jpg";
 import { ArrowRight, Package, Shield, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +22,15 @@ const Index = () => {
   };
 
   const handleProductClick = (product: Product) => {
+    console.log("DEBUG - Product clicked in Index:", {
+      name: product.name,
+      hasProductImages: !!product.product_images,
+      productImagesCount: product.product_images?.length || 0,
+      productImagesRaw: product.product_images,
+      hasImages: !!product.images,
+      imagesCount: Array.isArray(product.images) ? product.images.length : 0,
+      imagesRaw: product.images,
+    });
     setSelectedProduct(product);
     setIsProductDetailsOpen(true);
   };
@@ -34,60 +39,6 @@ const Index = () => {
     setIsProductDetailsOpen(false);
     setSelectedProduct(null);
   };
-
-  // Fallback products for when API is not available
-  const fallbackProducts = [
-    {
-      id: "550e8400-e29b-41d4-a716-446655440001", // Use UUID format
-      name: "Sport Runner Pro",
-      description: "High-performance running shoe",
-      price: "11500.00",
-      stock_quantity: 25,
-      brand: "Nike",
-      colors: ["Black", "White"],
-      sizes: ["8", "9", "10", "11"],
-      images: [
-        {
-          id: 1,
-          image_url: shoe1,
-          alt_text: "Sport Runner Pro",
-          is_primary: true,
-          sort_order: 0,
-        },
-      ],
-      category_name: "Shoes",
-      category_id: "550e8400-e29b-41d4-a716-446655440100",
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "550e8400-e29b-41d4-a716-446655440002", // Use UUID format
-      name: "Urban Classic",
-      description: "Stylish casual shoe",
-      price: "10200.00",
-      stock_quantity: 30,
-      brand: "Adidas",
-      colors: ["Brown", "Tan"],
-      sizes: ["7", "8", "9", "10"],
-      images: [
-        {
-          id: 2,
-          image_url: shoe2,
-          alt_text: "Urban Classic",
-          is_primary: true,
-          sort_order: 0,
-        },
-      ],
-      category_name: "Shoes",
-      category_id: "550e8400-e29b-41d4-a716-446655440100",
-      is_featured: true,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ];
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -103,15 +54,22 @@ const Index = () => {
             sort_by: "created_at",
             sort_order: "desc",
           });
+          console.log(
+            "DEBUG - Using all products from API:",
+            allProductsResponse.data.products
+          );
           setProducts(allProductsResponse.data.products);
         } else {
+          console.log(
+            "DEBUG - Using featured products from API:",
+            response.data.products
+          );
           setProducts(response.data.products);
         }
       } catch (err) {
         console.error("Failed to fetch products:", err);
         setError("Failed to load products");
-        // Use fallback products when API is not available
-        setProducts(fallbackProducts as any);
+        setProducts([]); // No fallback products, just empty array
       } finally {
         setLoading(false);
       }
@@ -271,12 +229,7 @@ const Index = () => {
               className="group relative h-64 sm:h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer sm:col-span-2 md:col-span-1"
               onClick={() => handleGenderFilter("male")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 to-blue-800/90" />
-              <img
-                src={shoe1}
-                alt="Men's Shoes"
-                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60"
-              />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-blue-800" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-6 sm:p-8">
                 <div className="text-3xl sm:text-5xl mb-2 sm:mb-4">👨</div>
                 <h3 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
@@ -301,12 +254,7 @@ const Index = () => {
               className="group relative h-64 sm:h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
               onClick={() => handleGenderFilter("female")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/90 to-purple-600/90" />
-              <img
-                src={shoe2}
-                alt="Women's Shoes"
-                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60"
-              />
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-6 sm:p-8">
                 <div className="text-3xl sm:text-5xl mb-2 sm:mb-4">👩</div>
                 <h3 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
@@ -331,12 +279,7 @@ const Index = () => {
               className="group relative h-64 sm:h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
               onClick={() => handleGenderFilter("unisex")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/90 to-teal-600/90" />
-              <img
-                src={shoe1}
-                alt="Unisex Shoes"
-                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60"
-              />
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-teal-600" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-6 sm:p-8">
                 <div className="text-3xl sm:text-5xl mb-2 sm:mb-4">👫</div>
                 <h3 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
@@ -460,7 +403,7 @@ const Index = () => {
             images:
               selectedProduct.product_images?.map((img) => ({
                 id: parseInt(img.id) || 0,
-                url: img.url,
+                image_url: img.url,
                 alt_text: img.alt_text,
                 is_primary: img.is_primary,
                 sort_order: img.sort_order,

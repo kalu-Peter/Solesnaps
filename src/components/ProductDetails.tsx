@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ProductImage {
   id: number;
-  url: string;
+  image_url: string;
   alt_text?: string;
   is_primary: boolean;
   sort_order: number;
@@ -48,6 +48,101 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
   const { addItem } = useCart(); // Changed from addToCart to addItem
   const { toast } = useToast();
 
+  // Get the primary image or first available image (exactly like ProductCard)
+  const getImageUrl = () => {
+    // If no images array or empty, return placeholder
+    if (
+      !product.images ||
+      !Array.isArray(product.images) ||
+      product.images.length === 0
+    ) {
+      return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=";
+    }
+
+    // Find primary image or use first image
+    const primaryImage = product.images.find((img) => img.is_primary);
+    const imageToUse = primaryImage || product.images[0];
+
+    if (!imageToUse || !imageToUse.image_url) {
+      return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=";
+    }
+
+    const imageUrl = imageToUse.image_url;
+
+    // If image URL is already absolute (starts with http), use it as is but fix the port
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+      // Replace any localhost port with 8091 (current backend port)
+      return imageUrl.replace(/localhost:\d+/, "localhost:8091");
+    }
+
+    // If image URL is relative, construct full URL
+    if (imageUrl.startsWith("/")) {
+      return imageUrl; // Let the proxy handle it
+    }
+
+    // If it's a relative path without leading slash, add one
+    return `/${imageUrl}`;
+  };
+
+  // Get all images with proper URL processing (like ProductCard)
+  const getProcessedImages = () => {
+    if (
+      !product.images ||
+      !Array.isArray(product.images) ||
+      product.images.length === 0
+    ) {
+      return [];
+    }
+
+    return product.images.map((img) => ({
+      id: img.id,
+      url: (() => {
+        const imageUrl = img.image_url;
+
+        // If image URL is already absolute (starts with http), use it as is but fix the port
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+          return imageUrl.replace(/localhost:\d+/, "localhost:8091");
+        }
+
+        // If image URL is relative, construct full URL
+        if (imageUrl.startsWith("/")) {
+          return imageUrl; // Let the proxy handle it
+        }
+
+        // If it's a relative path without leading slash, add one
+        return `/${imageUrl}`;
+      })(),
+      alt_text: img.alt_text,
+      is_primary: img.is_primary,
+      sort_order: img.sort_order,
+    }));
+  };
+
+  // Helper function to get primary image (like ProductCard)
+  const getPrimaryImage = () => {
+    const processedImages = getProcessedImages();
+    if (processedImages.length === 0) return null;
+    return processedImages.find((img) => img.is_primary) || processedImages[0];
+  };
+
+  // Helper function to sort images with primary first
+  const getSortedImages = () => {
+    const processedImages = getProcessedImages();
+    if (processedImages.length === 0) return [];
+
+    const primaryImage = processedImages.find((img) => img.is_primary);
+    const otherImages = processedImages.filter((img) => !img.is_primary);
+
+    if (primaryImage) {
+      return [
+        primaryImage,
+        ...otherImages.sort((a, b) => a.sort_order - b.sort_order),
+      ];
+    }
+
+    return processedImages.sort((a, b) => a.sort_order - b.sort_order);
+  };
+
   // Reset selections when product changes
   useEffect(() => {
     setSelectedSize("");
@@ -56,6 +151,18 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
     setQuantity(1);
     if (product.colors && product.colors.length > 0) {
       setSelectedColor(product.colors[0]);
+    }
+
+    // Debug logging to see what images are available (like ProductCard)
+    if (process.env.NODE_ENV === "development") {
+      console.log(`ProductDetails ${product.name}:`, {
+        hasImages: product.images && product.images.length > 0,
+        imageCount: product.images?.length || 0,
+        firstImageUrl: product.images?.[0]?.image_url,
+        processedImagesCount: getProcessedImages().length,
+        primaryImageUrl: getPrimaryImage()?.url,
+        sortedImagesCount: getSortedImages().length,
+      });
     }
   }, [product]);
 
@@ -69,14 +176,12 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
       return;
     }
 
+    const primaryImage = getPrimaryImage();
     const cartItem = {
       id: product.id,
       name: product.name,
       price: parseFloat(product.price),
-      image:
-        product.images && product.images.length > 0
-          ? product.images[0].url
-          : "",
+      image: primaryImage?.url || "",
       category: product.category_name || "general", // Use category_name from Product interface
       size: selectedSize || undefined,
       color: selectedColor || undefined,
@@ -91,17 +196,19 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
   };
 
   const nextImage = () => {
-    if (product.images && product.images.length > 1) {
+    const sortedImages = getSortedImages();
+    if (sortedImages.length > 1) {
       setCurrentImageIndex((prev) =>
-        prev === product.images!.length - 1 ? 0 : prev + 1
+        prev === sortedImages.length - 1 ? 0 : prev + 1
       );
     }
   };
 
   const prevImage = () => {
-    if (product.images && product.images.length > 1) {
+    const sortedImages = getSortedImages();
+    if (sortedImages.length > 1) {
       setCurrentImageIndex((prev) =>
-        prev === 0 ? product.images!.length - 1 : prev - 1
+        prev === 0 ? sortedImages.length - 1 : prev - 1
       );
     }
   };
@@ -127,74 +234,117 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
           <div className="space-y-4">
             {/* Main Image */}
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-              {product.images && product.images.length > 0 ? (
-                <>
-                  <img
-                    src={product.images[currentImageIndex].url}
-                    alt={
-                      product.images[currentImageIndex].alt_text || product.name
-                    }
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=";
-                    }}
-                  />
+              {(() => {
+                const sortedImages = getSortedImages();
+                // Debug: Modal render
+                if (process.env.NODE_ENV === "development") {
+                  console.log("DEBUG - Modal render:", {
+                    sortedImagesLength: sortedImages.length,
+                    currentImageIndex: currentImageIndex,
+                    currentImage: sortedImages[currentImageIndex],
+                  });
+                }
 
-                  {/* Navigation arrows for multiple images */}
-                  {product.images.length > 1 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                        onClick={prevImage}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                        onClick={nextImage}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">📸</div>
-                    <p>No Image Available</p>
+                return sortedImages.length > 0 ? (
+                  <>
+                    <img
+                      src={sortedImages[currentImageIndex].url}
+                      alt={
+                        sortedImages[currentImageIndex].alt_text || product.name
+                      }
+                      className="w-full h-full object-cover"
+                      onLoad={() =>
+                        console.log(
+                          "Image loaded successfully:",
+                          sortedImages[currentImageIndex].url
+                        )
+                      }
+                      onError={(e) => {
+                        console.log(
+                          "Image failed to load:",
+                          sortedImages[currentImageIndex].url
+                        );
+                        (e.target as HTMLImageElement).src =
+                          "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=";
+                      }}
+                    />
+
+                    {/* Navigation arrows for multiple images */}
+                    {sortedImages.length > 1 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={prevImage}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={nextImage}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📸</div>
+                      <p>No Image Available</p>
+                      <p className="text-xs mt-2">
+                        Debug:{" "}
+                        {JSON.stringify({
+                          hasImages: !!product.images,
+                          imagesLength: product.images?.length || 0,
+                          firstImageUrl: product.images?.[0]?.image_url,
+                        })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Thumbnail Images */}
-            {product.images && product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {product.images.map((image, index) => (
-                  <button
-                    key={image.id}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden ${
-                      currentImageIndex === index
-                        ? "border-blue-500"
-                        : "border-gray-200"
-                    }`}
-                  >
-                    <img
-                      src={image.url}
-                      alt={image.alt_text || `${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const sortedImages = getSortedImages();
+              return (
+                sortedImages.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto">
+                    {sortedImages.map((image, index) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden ${
+                          currentImageIndex === index
+                            ? "border-blue-500"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.alt_text || `${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Show primary badge on first image if it's primary */}
+                        {index === 0 && image.is_primary && (
+                          <div className="absolute -top-1 -right-1">
+                            <span className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded-full text-[10px]">
+                              Primary
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )
+              );
+            })()}
           </div>
 
           {/* Product Info Section */}
