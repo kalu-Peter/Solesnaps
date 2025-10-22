@@ -26,10 +26,13 @@ interface ProductCardProps {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  gender?: string;
   // Legacy props for backward compatibility
   image?: string;
   originalPrice?: string;
   category?: string;
+  // Optional click handler for opening product details
+  onProductClick?: (product: any) => void;
 }
 
 export default function ProductCard(props: ProductCardProps) {
@@ -47,6 +50,8 @@ export default function ProductCard(props: ProductCardProps) {
     image: legacyImage,
     originalPrice,
     category: legacyCategory,
+    onProductClick,
+    ...restProps
   } = props;
 
   // Get the primary image or first available image
@@ -136,10 +141,32 @@ export default function ProductCard(props: ProductCardProps) {
     setTimeout(() => setIsAdded(false), 2000);
   };
 
+  const handleProductClick = () => {
+    if (onProductClick) {
+      // Transform images to match ProductDetails interface
+      const transformedImages = images?.map((img) => ({
+        id: img.id || 0,
+        url: img.image_url,
+        alt_text: img.alt_text,
+        is_primary: img.is_primary,
+        sort_order: img.sort_order,
+      }));
+
+      onProductClick({
+        ...props,
+        ...restProps,
+        images: transformedImages,
+      });
+    }
+  };
+
   return (
     <Card className="group overflow-hidden border-border hover:shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1">
       <CardContent className="p-0">
-        <div className="aspect-square overflow-hidden bg-muted">
+        <div
+          className="aspect-square overflow-hidden bg-muted cursor-pointer"
+          onClick={handleProductClick}
+        >
           <img
             src={displayImage}
             alt={name}
@@ -150,7 +177,10 @@ export default function ProductCard(props: ProductCardProps) {
           <p className="text-xs text-muted uppercase tracking-wider truncate">
             {displayCategory}
           </p>
-          <h3 className="font-semibold text-sm sm:text-lg text-muted-foreground truncate">
+          <h3
+            className="font-semibold text-sm sm:text-lg text-muted-foreground truncate cursor-pointer hover:text-primary transition-colors"
+            onClick={handleProductClick}
+          >
             {name}
           </h3>
           <div className="flex items-center justify-between">

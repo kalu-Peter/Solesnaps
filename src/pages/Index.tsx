@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
+import ProductDetails from "@/components/ProductDetails";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import heroBanner from "@/assets/B.png";
@@ -16,10 +17,22 @@ const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleGenderFilter = (gender: string) => {
     navigate(`/shoes?gender=${gender}`);
+  };
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsProductDetailsOpen(true);
+  };
+
+  const handleCloseProductDetails = () => {
+    setIsProductDetailsOpen(false);
+    setSelectedProduct(null);
   };
 
   // Fallback products for when API is not available
@@ -234,6 +247,8 @@ const Index = () => {
                   is_active={product.is_active}
                   created_at={product.created_at}
                   updated_at={product.updated_at}
+                  gender={product.gender}
+                  onProductClick={handleProductClick}
                 />
               ))}
             </div>
@@ -435,6 +450,26 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <ProductDetails
+          product={{
+            ...selectedProduct,
+            price: String(selectedProduct.price), // Convert number to string
+            images:
+              selectedProduct.product_images?.map((img) => ({
+                id: parseInt(img.id) || 0,
+                url: img.url,
+                alt_text: img.alt_text,
+                is_primary: img.is_primary,
+                sort_order: img.sort_order,
+              })) || [],
+          }}
+          isOpen={isProductDetailsOpen}
+          onClose={handleCloseProductDetails}
+        />
+      )}
     </div>
   );
 };
