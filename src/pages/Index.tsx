@@ -1,9 +1,9 @@
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import ProductDetails from "@/components/ProductDetails";
+import HeroCarousel from "@/components/HeroCarousel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import heroBanner from "@/assets/B.png";
 import { ArrowRight, Package, Shield, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -82,35 +82,8 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Hero Section */}
-      <section className="relative h-[400px] sm:h-[500px] md:h-[600px] overflow-hidden">
-        <div className="absolute inset-0 bg-[var(--gradient-hero)]" />
-        <img
-          src={heroBanner}
-          alt="Shop Banner"
-          className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-90"
-        />
-        <div className="relative container mx-auto px-4 h-full flex flex-col justify-center items-center sm:items-start text-center sm:text-left">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-foreground mb-4 sm:mb-6 max-w-2xl">
-            Step Into{" "}
-            <span className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] bg-clip-text text-transparent">
-              Style & Tech
-            </span>
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl text-muted mb-6 sm:mb-8 max-w-xl">
-            Discover the perfect blend of fashion and technology. Quality
-            products at unbeatable prices.
-          </p>
-          <Button
-            size="lg"
-            className="bg-primary hover:bg-accent text-white group"
-            onClick={() => navigate("/shoes")}
-          >
-            Shop Now
-            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </div>
-      </section>
+      {/* Hero Carousel */}
+      <HeroCarousel onShopNow={() => navigate("/shoes")} />
 
       {/* Features */}
       <section className="py-8 sm:py-12 border-b border-border">
