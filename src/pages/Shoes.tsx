@@ -414,13 +414,21 @@ const Shoes = () => {
             ...selectedProduct,
             price: String(selectedProduct.price), // Convert number to string
             images:
-              selectedProduct.product_images?.map((img) => ({
-                id: parseInt(img.id) || 0,
-                image_url: img.url,
-                alt_text: img.alt_text,
-                is_primary: img.is_primary,
-                sort_order: img.sort_order,
-              })) || [],
+              selectedProduct.images && Array.isArray(selectedProduct.images)
+                ? selectedProduct.images.map((img: any) => ({
+                    id: img.id || 0,
+                    image_url: img.url || img.image_url, // Handle transformed images from ProductCard
+                    alt_text: img.alt_text,
+                    is_primary: img.is_primary,
+                    sort_order: img.sort_order,
+                  }))
+                : selectedProduct.product_images?.map((img: any) => ({
+                    id: parseInt(img.id) || 0,
+                    image_url: img.url || img.image_url, // Handle API response
+                    alt_text: img.alt_text,
+                    is_primary: img.is_primary,
+                    sort_order: img.sort_order,
+                  })) || [],
           }}
           isOpen={isProductDetailsOpen}
           onClose={handleCloseProductDetails}
