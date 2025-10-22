@@ -138,25 +138,43 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
               {/* Overlay */}
               <div className="absolute inset-0 bg-black/50" />
 
+              {/* Featured Image - Original Size */}
+              <div className="absolute right-8 md:right-16 lg:right-24 top-1/2 -translate-y-1/2 z-20 hidden md:block">
+                <div className="relative">
+                  <img
+                    src={slide.image}
+                    alt={`Featured ${slide.title} ${slide.subtitle}`}
+                    className="max-w-[300px] lg:max-w-[400px] xl:max-w-[500px] h-auto object-contain rounded-lg shadow-2xl"
+                    style={{
+                      filter: "drop-shadow(0 20px 25px rgb(0 0 0 / 0.3))",
+                    }}
+                  />
+                  {/* Subtle glow effect */}
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/20 to-accent/20 blur-xl -z-10 scale-110"></div>
+                </div>
+              </div>
+
               {/* Content */}
               <div className="relative container mx-auto px-4 h-full flex flex-col justify-center items-center sm:items-start text-center sm:text-left z-10">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 max-w-2xl drop-shadow-lg">
-                  {slide.title}{" "}
-                  <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-                    {slide.subtitle}
-                  </span>
-                </h1>
-                <p className="text-base sm:text-lg md:text-xl text-white mb-6 sm:mb-8 max-w-xl drop-shadow-md">
-                  {slide.description}
-                </p>
-                <Button
-                  size="lg"
-                  className="bg-primary hover:bg-accent text-white group shadow-lg"
-                  onClick={onShopNow}
-                >
-                  {slide.buttonText || "Shop Now"}
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                <div className="max-w-2xl md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+                  <h1 className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4 sm:mb-6 drop-shadow-lg">
+                    {slide.title}{" "}
+                    <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+                      {slide.subtitle}
+                    </span>
+                  </h1>
+                  <p className="text-base sm:text-lg md:text-lg lg:text-xl text-white mb-6 sm:mb-8 drop-shadow-md">
+                    {slide.description}
+                  </p>
+                  <Button
+                    size="lg"
+                    className="bg-primary hover:bg-accent text-white group shadow-lg"
+                    onClick={onShopNow}
+                  >
+                    {slide.buttonText || "Shop Now"}
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
