@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import shoe1 from "@/assets/shoe-1.jpg";
 import shoe2 from "@/assets/shoe-2.jpg";
 import { Filter, Info } from "lucide-react";
@@ -26,9 +25,8 @@ const Shoes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false);
-  const [sizeFormat, setSizeFormat] = useState<"US" | "UK">("US");
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedGender, setSelectedGender] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("recommended");
   const [shoes, setShoes] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +114,9 @@ const Shoes = () => {
           }
         }
 
-        setShoes(filteredProducts);
+        // Apply sorting to filtered products
+        const sortedProducts = sortProducts(filteredProducts, sortBy);
+        setShoes(sortedProducts);
       } catch (err) {
         console.error("Failed to fetch shoes:", err);
         setError("Failed to load shoes. Please try again later.");
@@ -138,7 +138,7 @@ const Shoes = () => {
     };
 
     fetchShoesAndCategories();
-  }, [searchParams, selectedCategory]);
+  }, [searchParams, selectedCategory, sortBy]);
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
@@ -148,6 +148,31 @@ const Shoes = () => {
   const handleCloseProductDetails = () => {
     setIsProductDetailsOpen(false);
     setSelectedProduct(null);
+  };
+
+  // Function to sort products based on selected criteria
+  const sortProducts = (
+    products: Product[],
+    sortCriteria: string
+  ): Product[] => {
+    const sorted = [...products];
+    switch (sortCriteria) {
+      case "recommended":
+        // Show featured products first, then by creation date
+        return sorted.sort((a, b) => {
+          if (a.is_featured && !b.is_featured) return -1;
+          if (!a.is_featured && b.is_featured) return 1;
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
+      case "price-low":
+        return sorted.sort((a, b) => a.price - b.price);
+      case "price-high":
+        return sorted.sort((a, b) => b.price - a.price);
+      default:
+        return sorted;
+    }
   };
 
   return (
@@ -225,121 +250,22 @@ const Shoes = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Size Filter */}
-                <div className="min-w-[80px] sm:min-w-[120px]">
-                  <Select
-                    value={
-                      selectedSizes.length > 0
-                        ? `${selectedSizes.length} size${
-                            selectedSizes.length > 1 ? "s" : ""
-                          }`
-                        : "Size"
-                    }
-                    onValueChange={() => {}} // Handled in content
-                  >
-                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                      <SelectValue placeholder="Size" /> Size
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="p-3 space-y-3">
-                        {/* Size Format Toggle */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">Format:</span>
-                          <div className="flex border border-border rounded overflow-hidden">
-                            <Button
-                              variant={
-                                sizeFormat === "US" ? "default" : "ghost"
-                              }
-                              size="sm"
-                              className="h-6 px-3 text-xs rounded-none"
-                              onClick={() => setSizeFormat("US")}
-                            >
-                              US
-                            </Button>
-                            <Button
-                              variant={
-                                sizeFormat === "UK" ? "default" : "ghost"
-                              }
-                              size="sm"
-                              className="h-6 px-3 text-xs rounded-none"
-                              onClick={() => setSizeFormat("UK")}
-                            >
-                              UK
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Size Grid */}
-                        <div className="grid grid-cols-3 gap-1">
-                          {(sizeFormat === "US"
-                            ? ["7", "8", "9", "10", "11", "12"]
-                            : ["6", "7", "8", "9", "10", "11"]
-                          ).map((size) => {
-                            const isSelected = selectedSizes.includes(
-                              `${sizeFormat}-${size}`
-                            );
-                            return (
-                              <Button
-                                key={size}
-                                variant={isSelected ? "default" : "outline"}
-                                size="sm"
-                                className="h-8 text-xs"
-                                onClick={() => {
-                                  const sizeKey = `${sizeFormat}-${size}`;
-                                  setSelectedSizes((prev) =>
-                                    isSelected
-                                      ? prev.filter((s) => s !== sizeKey)
-                                      : [...prev, sizeKey]
-                                  );
-                                }}
-                              >
-                                {size}
-                              </Button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Selected Sizes & Clear */}
-                        {selectedSizes.length > 0 && (
-                          <div className="pt-2 border-t border-border">
-                            <div className="text-xs text-muted-foreground mb-2">
-                              Selected:{" "}
-                              {selectedSizes
-                                .map((size) => size.split("-")[1])
-                                .join(", ")}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => setSelectedSizes([])}
-                            >
-                              Clear All
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               {/* Right Side - Sort Control */}
               <div className="flex items-center">
-                <Select defaultValue="featured">
+                <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-32 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="featured">Featured</SelectItem>
+                    <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="price-low">
                       Price: Low to High
                     </SelectItem>
                     <SelectItem value="price-high">
                       Price: High to Low
                     </SelectItem>
-                    <SelectItem value="name">Name A-Z</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
