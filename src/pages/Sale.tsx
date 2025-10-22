@@ -311,7 +311,7 @@ const Sale = () => {
           </div>
 
           {/* Products Grid */}
-          <div className="grid gap-3 grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {saleProducts.map((product) => (
               <div key={product.id} className="relative">
                 <ProductCard

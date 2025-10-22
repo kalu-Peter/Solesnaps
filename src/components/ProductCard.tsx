@@ -76,8 +76,8 @@ export default function ProductCard(props: ProductCardProps) {
 
     // If image URL is already absolute (starts with http), use it as is but fix the port
     if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-      // Replace any localhost port with 8080 (current backend port)
-      return imageUrl.replace(/localhost:\d+/, "localhost:8080");
+      // Replace any localhost port with 8091 (current backend port)
+      return imageUrl.replace(/localhost:\d+/, "localhost:8091");
     }
 
     // If image URL is relative, construct full URL
