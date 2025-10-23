@@ -142,7 +142,7 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
         >
           {extendedSlides.map((slide, index) => (
             <div
-              key={slide.id}
+              key={`${slide.id}-${index}`}
               className="relative w-full h-full flex-shrink-0 bg-gradient-to-br from-primary to-accent"
               style={{ minWidth: "100%" }}
             >

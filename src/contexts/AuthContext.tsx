@@ -153,38 +153,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           }
 
-          // Verify token is still valid by fetching user profile
+          // Verify session is still valid using Supabase
           try {
-            const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-              headers: {
-                Authorization: `Bearer ${storedToken}`,
-                "Content-Type": "application/json",
-              },
-            });
+            const { supabase } = await import("../lib/supabase");
+            if (supabase) {
+              const {
+                data: { user: currentUser },
+                error,
+              } = await supabase.auth.getUser();
 
-            if (response.ok) {
-              const data = await response.json();
-              setUser(data.user);
-              // Update localStorage with fresh user data
-              localStorage.setItem("auth_user", JSON.stringify(data.user));
-            } else if (response.status === 401) {
-              // Token expired, try to refresh
-              const refreshToken = localStorage.getItem("refresh_token");
-              if (refreshToken) {
-                const refreshSuccess = await attemptTokenRefresh(refreshToken);
-                if (!refreshSuccess) {
-                  clearAuthData();
-                }
-              } else {
+              if (error || !currentUser) {
+                console.log("Session invalid, clearing auth data");
                 clearAuthData();
+              } else {
+                // Session is valid, user data is already set above
+                console.log("Session verified successfully");
               }
-            } else {
-              // Other error, clear data
-              clearAuthData();
             }
-          } catch (profileError) {
-            console.error("Profile verification error:", profileError);
-            // Network error - keep existing token but don't clear it
+          } catch (sessionError) {
+            console.error("Session verification error:", sessionError);
+            // Network error - keep existing session but don't clear it
             // User might be offline
           }
         }
@@ -313,32 +301,193 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Clean and validate email before sending to Supabase
+      const cleanEmail = userData.email.toLowerCase().trim();
+
+      // Additional email validation
+      const emailRegex =
+        /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+      if (!emailRegex.test(cleanEmail)) {
+        return {
+          success: false,
+          error: "Please enter a valid email address.",
+        };
+      }
+
+      // Check for patterns that Supabase commonly rejects
+      const localPart = cleanEmail.split("@")[0];
+      const hasConsecutiveNumbers = /\d{2,}/.test(localPart);
+      const domain = cleanEmail.split("@")[1];
+
+      // Warn about potentially problematic patterns
+      if (hasConsecutiveNumbers && localPart.length < 6) {
+        console.warn(
+          "Email pattern warning: Short local part with consecutive numbers might be rejected by Supabase"
+        );
+      }
+
+      console.log("Attempting registration with:", {
+        email: cleanEmail,
+        originalEmail: userData.email,
+        emailLength: cleanEmail.length,
+        hasSpecialChars: /[!#$%&'*+/=?^_`{|}~-]/.test(cleanEmail),
+        domain: cleanEmail.split("@")[1],
+        localPart: cleanEmail.split("@")[0],
+        localPartLength: cleanEmail.split("@")[0].length,
+        hasNumbers: /\d/.test(cleanEmail.split("@")[0]),
+        hasConsecutiveNumbers: /\d\d+/.test(cleanEmail.split("@")[0]),
+        startsWithNumber: /^\d/.test(cleanEmail.split("@")[0]),
+        password: "***hidden***",
+        metadata: {
+          first_name: userData.first_name,
+          last_name: userData.last_name,
         },
-        body: JSON.stringify(userData),
       });
 
-      const data = await response.json();
+      // Check if the email might be in an invalid state due to previous failed attempts
+      console.log("Attempting Supabase registration...");
 
-      if (response.ok) {
-        const { user: newUser, tokens } = data;
+      // Use direct Supabase call for registration
+      const { data: authData, error: authError } = await supabaseAuth.signUp(
+        cleanEmail,
+        userData.password,
+        {
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+        }
+      );
 
-        setUser(newUser);
-        setToken(tokens.access_token);
+      if (authError) {
+        console.error("Supabase registration error details:", {
+          message: authError.message,
+          status: authError.status,
+          error: authError,
+          email: cleanEmail,
+        });
 
-        // Store in localStorage
-        localStorage.setItem("auth_token", tokens.access_token);
-        localStorage.setItem("auth_user", JSON.stringify(newUser));
-        localStorage.setItem("refresh_token", tokens.refresh_token);
+        // Provide more specific error messages based on common issues
+        let errorMessage = authError.message;
 
-        return { success: true };
+        if (
+          authError.message.includes("Email address") &&
+          authError.message.includes("invalid")
+        ) {
+          // This specific error usually means:
+          // 1. Email already exists but in a failed/unconfirmed state
+          // 2. Email was previously used and blocked
+          // 3. Supabase has specific validation rules for this email pattern
+
+          console.log("Analyzing email rejection for:", cleanEmail);
+
+          // Check common patterns that Supabase might reject
+          const localPart = cleanEmail.split("@")[0];
+          const hasConsecutiveNumbers = /\d\d+/.test(localPart);
+          const isVeryShort = localPart.length < 3;
+          const hasOnlyNumbersAndLetters = /^[a-z0-9]+$/.test(localPart);
+
+          console.log("Email analysis:", {
+            localPart,
+            hasConsecutiveNumbers,
+            isVeryShort,
+            hasOnlyNumbersAndLetters,
+            recommendation: hasConsecutiveNumbers
+              ? "Try without consecutive numbers"
+              : isVeryShort
+              ? "Try a longer email"
+              : "Try adding dots or different format",
+          });
+
+          errorMessage = `This email address cannot be used. This usually happens when:
+          
+          • The email was previously registered but not confirmed
+          • The email pattern is flagged by Supabase's validation
+          • There are consecutive numbers in the email (like "jogn1")
+          
+          Please try:
+          • A different email address
+          • Adding a dot (like "john.doe@gmail.com")
+          • Using fewer consecutive numbers
+          • Using your actual primary email address`;
+        } else if (authError.message.includes("rate limit")) {
+          errorMessage =
+            "Too many registration attempts. Please wait a few minutes and try again.";
+        } else if (authError.message.includes("already registered")) {
+          errorMessage =
+            "This email address is already registered. Please try logging in instead.";
+        }
+
+        return {
+          success: false,
+          error: errorMessage,
+        };
+      }
+
+      if (authData.user) {
+        console.log("User registered successfully:", authData.user);
+
+        // Check if email confirmation is required
+        if (!authData.session && !authData.user.email_confirmed_at) {
+          return {
+            success: true,
+            error:
+              "Please check your email and click the confirmation link to complete registration.",
+          };
+        }
+
+        if (authData.session) {
+          // User has session (auto-confirmed or confirmed)
+
+          // Create user profile in database
+          try {
+            await ensureUserInDatabase(authData.user);
+          } catch (dbError) {
+            console.error("Database user creation error:", dbError);
+            // Continue anyway as the auth user was created successfully
+          }
+
+          // Create user object in the expected format
+          const newUser: User = {
+            id: authData.user.id,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            email: userData.email,
+            role: "customer",
+            phone: authData.user.user_metadata?.phone,
+            avatar_url: authData.user.user_metadata?.avatar_url,
+            date_of_birth: authData.user.user_metadata?.date_of_birth,
+            gender: authData.user.user_metadata?.gender,
+          };
+
+          setUser(newUser);
+          setToken(authData.session.access_token);
+
+          // Store in localStorage
+          localStorage.setItem("auth_token", authData.session.access_token);
+          localStorage.setItem("auth_user", JSON.stringify(newUser));
+          localStorage.setItem(
+            "supabase_session",
+            JSON.stringify(authData.session)
+          );
+          if (authData.session.refresh_token) {
+            localStorage.setItem(
+              "refresh_token",
+              authData.session.refresh_token
+            );
+          }
+
+          return { success: true };
+        } else {
+          return {
+            success: true,
+            error:
+              "Registration successful! Please check your email to confirm your account.",
+          };
+        }
       } else {
         return {
           success: false,
-          error: data.message || "Registration failed. Please try again.",
+          error: "Registration failed. Please try again.",
         };
       }
     } catch (error) {
@@ -491,27 +640,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Sign out from Supabase
+    try {
+      const { error } = await supabaseAuth.signOut();
+      if (error) {
+        console.error("Supabase logout error:", error);
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+
+    // Clear local state and storage
     setUser(null);
     setToken(null);
-
-    // Clear localStorage
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("refresh_token");
-
-    // Optional: Call logout endpoint
-    if (token) {
-      fetch(`${API_BASE_URL}/auth/logout`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }).catch((error) => {
-        console.error("Logout API error:", error);
-      });
-    }
+    localStorage.removeItem("supabase_session");
   };
 
   const isAuthenticated = !!user && !!token;
