@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Cart from "@/components/Cart";
@@ -25,6 +25,7 @@ import ProfilePage from "./pages/ProfilePage";
 import MyOrders from "./pages/MyOrders";
 import ResponsiveTest from "./pages/ResponsiveTest";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRedirect from "./components/AdminRedirect";
 
 const queryClient = new QueryClient();
 
@@ -37,18 +38,55 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/shoes" element={<Shoes />} />
-              <Route path="/new-arrivals" element={<NewArrivals />} />
-              <Route path="/sale" element={<Sale />} />
+              <Route
+                path="/"
+                element={
+                  <AdminRedirect>
+                    <Index />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/shoes"
+                element={
+                  <AdminRedirect>
+                    <Shoes />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/new-arrivals"
+                element={
+                  <AdminRedirect>
+                    <NewArrivals />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/sale"
+                element={
+                  <AdminRedirect>
+                    <Sale />
+                  </AdminRedirect>
+                }
+              />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/responsive-test" element={<ResponsiveTest />} />
+              <Route
+                path="/responsive-test"
+                element={
+                  <AdminRedirect>
+                    <ResponsiveTest />
+                  </AdminRedirect>
+                }
+              />
               {/* Protected User Routes */}
               <Route
                 path="/profile"
                 element={
                   <ProtectedRoute>
-                    <ProfilePage />
+                    <AdminRedirect>
+                      <ProfilePage />
+                    </AdminRedirect>
                   </ProtectedRoute>
                 }
               />
@@ -56,9 +94,11 @@ const App = () => (
                 path="/my-orders"
                 element={
                   <ProtectedRoute>
-                    <ErrorBoundary>
-                      <MyOrders />
-                    </ErrorBoundary>
+                    <AdminRedirect>
+                      <ErrorBoundary>
+                        <MyOrders />
+                      </ErrorBoundary>
+                    </AdminRedirect>
                   </ProtectedRoute>
                 }
               />
@@ -71,11 +111,17 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<AdminDashboard />} />
+                <Route
+                  index
+                  element={<Navigate to="/admin/dashboard" replace />}
+                />
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="products" element={<AdminProducts />} />
                 <Route path="orders" element={<AdminOrders />} />
-                <Route path="delivery-locations" element={<AdminDeliveryLocations />} />
+                <Route
+                  path="delivery-locations"
+                  element={<AdminDeliveryLocations />}
+                />
                 <Route path="coupons" element={<AdminCoupons />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="users" element={<AdminUsers />} />

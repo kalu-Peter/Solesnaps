@@ -16,7 +16,6 @@ import {
   BarChart3,
   Bell,
   MapPin,
-  ShoppingBag,
   User,
   Tag,
 } from "lucide-react";
@@ -172,7 +171,7 @@ const AdminLayout = () => {
         <div className="flex h-16 items-center justify-between px-4">
           {/* Logo */}
           <Link to="/admin" className="flex items-center gap-2">
-            <ShoppingBag className="h-6 w-6 text-primary" />
+            <LayoutDashboard className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">SoleSnaps Admin</span>
           </Link>
 
@@ -253,12 +252,6 @@ const AdminLayout = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/" className="cursor-pointer">
-                    <ShoppingBag className="mr-2 h-4 w-4" />
-                    <span>Back to Store</span>
-                  </Link>
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="text-destructive focus:text-destructive cursor-pointer"

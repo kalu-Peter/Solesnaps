@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +16,8 @@ export default function SignInForm({
   onSwitchToSignUp,
   onClose,
 }: SignInFormProps) {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -53,7 +55,20 @@ export default function SignInForm({
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        onClose();
+        // Wait a moment for user context to update
+        setTimeout(() => {
+          // Check if the logged-in user is an admin
+          const currentUser = JSON.parse(
+            localStorage.getItem("auth_user") || "{}"
+          );
+          if (currentUser.role === "admin") {
+            console.log("Admin login detected, redirecting to admin dashboard");
+            navigate("/admin/dashboard");
+          } else {
+            console.log("Regular user login, closing modal");
+            onClose();
+          }
+        }, 100);
       } else {
         setErrors({
           general:
@@ -206,9 +221,15 @@ export default function SignInForm({
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>
             <strong>Admin:</strong> admin@solesnaps.com / admin123
+            <span className="block text-green-600 text-xs mt-1">
+              → Will be redirected to Admin Dashboard
+            </span>
           </p>
           <p>
             <strong>User:</strong> john.doe@example.com / password123
+            <span className="block text-blue-600 text-xs mt-1">
+              → Access to store only
+            </span>
           </p>
         </div>
       </div>
