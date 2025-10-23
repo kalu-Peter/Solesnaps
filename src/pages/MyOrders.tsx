@@ -79,6 +79,8 @@ const MyOrders = () => {
             sortParams = { sort_by: "created_at", sort_order: "desc" as const };
         }
 
+        console.log("Fetching orders for user:", user.id);
+
         const response = await orderService.getUserOrders(user.id, {
           status: filterStatus !== "all" ? filterStatus : undefined,
           limit: 50, // Fetch up to 50 orders
@@ -86,9 +88,21 @@ const MyOrders = () => {
         });
 
         console.log("Orders response:", response);
+        console.log(
+          "Number of orders found:",
+          response?.data?.orders?.length || 0
+        );
 
         // The orders are already properly formatted by the orderService
         const ordersData = response?.data?.orders || [];
+
+        if (ordersData.length === 0) {
+          console.log("No orders found for user. This could mean:");
+          console.log("1. User has no orders yet");
+          console.log("2. Database filtering is not working correctly");
+          console.log("3. RLS policies are blocking access");
+        }
+
         setOrders(ordersData);
       } catch (err) {
         console.error("Failed to fetch orders:", err);
