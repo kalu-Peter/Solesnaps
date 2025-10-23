@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Orders Issue</title>
+</head>
+<body>
+    <h1>Debug Orders Issue</h1>
+    <p>Open the browser console (F12) to see the debug output.</p>
+    <button onclick="runDebug()">Run Debug Test</button>
+    
+    <script type="module">
+        // Debug script to check orders and user data
+        window.runDebug = async function() {
+            console.log('=== DEBUG ORDERS ISSUE ===');
+            
+            try {
+                // Import the supabase client
+                const { supabase } = await import('./src/lib/supabase.js');
+                
+                if (!supabase) {
+                    console.error('Supabase client not available');
+                    return;
+                }
+                
+                console.log('1. Checking all orders...');
+                const { data: allOrders, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*');
+                
+                console.log('All orders:', allOrders);
+                console.log('Orders error:', ordersError);
+                console.log('Number of orders:', allOrders ? allOrders.length : 0);
+                
+                if (allOrders && allOrders.length > 0) {
+                    console.log('\nSample orders user_ids:');
+                    allOrders.slice(0, 5).forEach((order, i) => {
+                        console.log(`Order ${i + 1}: user_id="${order.user_id}" (${typeof order.user_id})`);
+                    });
+                }
+                
+                console.log('\n2. Checking all users...');
+                const { data: allUsers, error: usersError } = await supabase
+                    .from('users')
+                    .select('*');
+                
+                console.log('All users:', allUsers);
+                console.log('Users error:', usersError);
+                console.log('Number of users:', allUsers ? allUsers.length : 0);
+                
+                if (allUsers && allUsers.length > 0) {
+                    console.log('\nSample users:');
+                    allUsers.slice(0, 5).forEach((user, i) => {
+                        console.log(`User ${i + 1}: id="${user.id}" auth_id="${user.auth_id}" email="${user.email}"`);
+                    });
+                }
+                
+                // Check current auth user
+                console.log('\n3. Checking current auth state...');
+                const authUser = localStorage.getItem('auth_user');
+                if (authUser) {
+                    const user = JSON.parse(authUser);
+                    console.log('Current auth user:', user);
+                    console.log('Auth user ID:', user.id, '(type:', typeof user.id, ')');
+                    
+                    // Check if this user exists in users table
+                    console.log('\n4. Checking if auth user exists in users table...');
+                    const { data: userInDb, error: userDbError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', user.id);
+                    
+                    console.log('User in DB (by id):', userInDb);
+                    console.log('User DB error:', userDbError);
+                    
+                    // Also check by auth_id
+                    const { data: userByAuthId, error: authIdError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('auth_id', user.id);
+                    
+                    console.log('User in DB (by auth_id):', userByAuthId);
+                    console.log('Auth ID error:', authIdError);
+                    
+                    // Check orders for this user
+                    console.log('\n5. Checking orders for current user...');
+                    const { data: userOrders, error: userOrdersError } = await supabase
+                        .from('orders')
+                        .select('*')
+                        .eq('user_id', user.id);
+                    
+                    console.log('User orders:', userOrders);
+                    console.log('User orders error:', userOrdersError);
+                } else {
+                    console.log('No auth user found in localStorage');
+                }
+                
+            } catch (error) {
+                console.error('Debug error:', error);
+            }
+        };
+        
+        // Auto-run the debug
+        setTimeout(() => {
+            if (window.runDebug) {
+                window.runDebug();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

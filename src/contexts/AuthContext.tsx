@@ -80,14 +80,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const API_BASE_URL = "/api";
 
-  // Helper function to ensure user exists in database
+  // Helper function to ensure user exists in database and return the correct user record
   const ensureUserInDatabase = async (supabaseUser: any) => {
     try {
       console.log("Checking if user exists in database:", supabaseUser.id);
 
-      // Use upsert instead of separate check and create
+      const { supabase } = await import("../lib/supabase");
+      if (!supabase) {
+        throw new Error("Supabase client not available");
+      }
+
+      // First, check if user exists by auth_id (most likely scenario)
+      console.log("Checking for existing user by auth_id...");
+      const { data: existingUser, error: checkError } = await supabase
+        .from("users")
+        .select("id, auth_id, email, first_name, last_name")
+        .eq("auth_id", supabaseUser.id)
+        .single();
+
+      if (existingUser && !checkError) {
+        console.log("Found existing user by auth_id:", existingUser);
+        return existingUser;
+      }
+
+      // If not found by auth_id, check by email (backup check)
+      console.log("User not found by auth_id, checking by email...");
+      const { data: userByEmail, error: emailError } = await supabase
+        .from("users")
+        .select("id, auth_id, email, first_name, last_name")
+        .eq("email", supabaseUser.email)
+        .single();
+
+      if (userByEmail && !emailError) {
+        console.log("Found existing user by email:", userByEmail);
+
+        // Update the auth_id if it's missing or different
+        if (userByEmail.auth_id !== supabaseUser.id) {
+          console.log("Updating user record with correct auth_id...");
+          const { data: updatedUser, error: updateError } = await supabase
+            .from("users")
+            .update({ auth_id: supabaseUser.id })
+            .eq("id", userByEmail.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error("Failed to update user auth_id:", updateError);
+          } else {
+            console.log("User auth_id updated successfully:", updatedUser);
+            return updatedUser;
+          }
+        }
+
+        return userByEmail;
+      }
+
+      // If no existing user found, create new user record
+      console.log("No existing user found, creating new user record...");
       const userDataForDb = {
-        id: supabaseUser.id,
+        id: supabaseUser.id, // Use Supabase Auth ID as primary key
         auth_id: supabaseUser.id,
         email: supabaseUser.email,
         first_name: supabaseUser.user_metadata?.first_name || "",
@@ -98,26 +149,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         gender: supabaseUser.user_metadata?.gender || null,
       };
 
-      // Use direct supabase client with upsert to handle conflicts
-      const { supabase } = await import("../lib/supabase");
-      if (supabase) {
-        const { data, error } = await supabase
-          .from("users")
-          .upsert(userDataForDb, {
-            onConflict: "id",
-            ignoreDuplicates: false,
-          })
-          .select()
-          .single();
+      const { data: newUser, error: createError } = await supabase
+        .from("users")
+        .insert(userDataForDb)
+        .select()
+        .single();
 
-        if (error) {
-          console.error("Failed to upsert user:", error);
-          throw error;
-        }
-        console.log("User ensured in database:", data);
-      } else {
-        throw new Error("Supabase not configured");
+      if (createError) {
+        console.error("Failed to create user:", createError);
+        throw createError;
       }
+
+      console.log("New user record created:", newUser);
+      return newUser;
     } catch (error) {
       console.error("Error ensuring user in database:", error);
       throw error;
@@ -251,11 +295,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("User logged in:", data.user);
         console.log("Session established:", data.session);
 
-        // User automatically created by database trigger - no manual sync needed
+        // Ensure user exists in database and get the correct user record
+        let dbUser = null;
+        try {
+          dbUser = await ensureUserInDatabase(data.user);
+          console.log("Database user record from login:", dbUser);
+        } catch (dbError) {
+          console.error("Database user creation error during login:", dbError);
+          // Continue anyway as the auth user was created successfully
+        }
 
         // Create user object in the expected format
+        // IMPORTANT: Use the database user.id (which references orders.user_id), not the auth_id
         const userData: User = {
-          id: data.user.id, // Keep as string UUID
+          id: dbUser?.id || data.user.id, // Use database user.id if available
           first_name: data.user.user_metadata?.first_name || "",
           last_name: data.user.user_metadata?.last_name || "",
           email: data.user.email || "",
@@ -438,17 +491,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (authData.session) {
           // User has session (auto-confirmed or confirmed)
 
-          // Create user profile in database
+          // Create user profile in database and get the correct user record
+          let dbUser = null;
           try {
-            await ensureUserInDatabase(authData.user);
+            dbUser = await ensureUserInDatabase(authData.user);
+            console.log("Database user record:", dbUser);
           } catch (dbError) {
             console.error("Database user creation error:", dbError);
             // Continue anyway as the auth user was created successfully
           }
 
           // Create user object in the expected format
+          // IMPORTANT: Use the database user.id (which references orders.user_id), not the auth_id
           const newUser: User = {
-            id: authData.user.id,
+            id: dbUser?.id || authData.user.id, // Use database user.id if available
             first_name: userData.first_name,
             last_name: userData.last_name,
             email: userData.email,

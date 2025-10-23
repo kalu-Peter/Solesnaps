@@ -192,6 +192,41 @@ export const supabaseDb = {
   getOrders: async (filters?: any) => {
     if (!supabase) throw new Error('Supabase not configured');
     
+    console.log('SupabaseDb.getOrders - received filters:', filters);
+    console.log('SupabaseDb.getOrders - filters.userId:', filters?.userId);
+    console.log('SupabaseDb.getOrders - typeof filters.userId:', typeof filters?.userId);
+    
+    // First, let's check if the user exists in the users table
+    if (filters?.userId) {
+      console.log('Checking if user exists in users table...');
+      console.log('Looking for user with ID:', filters.userId);
+      
+      const { data: userCheck, error: userError } = await supabase
+        .from('users')
+        .select('id, auth_id, email, first_name, last_name')
+        .eq('id', filters.userId);
+      
+      console.log('User check (by id) result:', userCheck);
+      console.log('User check (by id) error:', userError);
+      
+      // Also check by auth_id in case they're different
+      const { data: authUserCheck, error: authUserError } = await supabase
+        .from('users')
+        .select('id, auth_id, email, first_name, last_name')
+        .eq('auth_id', filters.userId);
+      
+      console.log('Auth user check (by auth_id) result:', authUserCheck);
+      console.log('Auth user check (by auth_id) error:', authUserError);
+      
+      // Also get all users to see what's in the table
+      const { data: allUsers, error: allUsersError } = await supabase
+        .from('users')
+        .select('id, auth_id, email, first_name, last_name');
+      
+      console.log('All users in database:', allUsers);
+      console.log('All users error:', allUsersError);
+    }
+    
     let query = supabase
       .from('orders')
       .select(`
@@ -202,7 +237,30 @@ export const supabaseDb = {
         users(first_name, last_name, email)
       `);
 
+    // Before applying filters, let's see all orders to debug
     if (filters?.userId) {
+      console.log('Before filtering - checking all orders...');
+      const { data: allOrdersForDebug, error: allOrdersError } = await supabase
+        .from('orders')
+        .select('id, user_id, order_number, status, total_amount, created_at');
+      
+      console.log('All orders in database:', allOrdersForDebug);
+      console.log('All orders error:', allOrdersError);
+      
+      if (allOrdersForDebug && allOrdersForDebug.length > 0) {
+        console.log('Sample order user_ids:');
+        allOrdersForDebug.slice(0, 5).forEach((order, index) => {
+          console.log(`Order ${index + 1}: id=${order.id}, user_id="${order.user_id}" (type: ${typeof order.user_id}), order_number=${order.order_number}`);
+        });
+        
+        // Check if any orders match our user ID
+        const matchingOrders = allOrdersForDebug.filter(order => order.user_id === filters.userId);
+        console.log(`Orders matching user ID "${filters.userId}":`, matchingOrders);
+      }
+    }
+
+    if (filters?.userId) {
+      console.log('SupabaseDb.getOrders - Applying user filter:', filters.userId);
       query = query.eq('user_id', filters.userId);
     }
 
@@ -214,7 +272,9 @@ export const supabaseDb = {
       query = query.limit(filters.limit);
     }
 
-    return await query.order('created_at', { ascending: false });
+    const result = await query.order('created_at', { ascending: false });
+    console.log('SupabaseDb.getOrders - query result:', result);
+    return result;
   },
 
   // Get single order

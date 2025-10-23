@@ -27,6 +27,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { orderService, Order, OrderItem } from "../services/orderService";
+import { supabaseDb } from "../lib/supabase";
 
 const MyOrders = () => {
   const { isAuthenticated, user } = useAuth();
@@ -54,6 +55,12 @@ const MyOrders = () => {
           userObject: user, // Add full user object to debug
         });
 
+        console.log("🔍 IMPORTANT: Fetching orders for user.id:", user.id);
+        console.log(
+          "📋 This should be the users.id from database (not auth_id)"
+        );
+        console.log("🔗 orders.user_id should reference this users.id value");
+
         // Convert sortBy to API parameters
         let sortParams = {};
         switch (sortBy) {
@@ -80,6 +87,24 @@ const MyOrders = () => {
         }
 
         console.log("Fetching orders for user:", user.id);
+
+        // First, let's check all orders in the database for debugging
+        const { data: allOrders, error: allOrdersError } =
+          await supabaseDb.getOrders({});
+        console.log("MyOrders - All orders in database:", allOrders);
+        console.log("MyOrders - All orders error:", allOrdersError);
+
+        // If there are orders, log the user_id of each to see the format
+        if (allOrders && allOrders.length > 0) {
+          console.log("Sample order user_ids:");
+          allOrders.slice(0, 3).forEach((order, index) => {
+            console.log(
+              `Order ${index + 1}: user_id = "${
+                order.user_id
+              }" (type: ${typeof order.user_id})`
+            );
+          });
+        }
 
         const response = await orderService.getUserOrders(user.id, {
           status: filterStatus !== "all" ? filterStatus : undefined,

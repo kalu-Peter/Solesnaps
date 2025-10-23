@@ -68,6 +68,9 @@ export const orderService = {
       filters.limit = params.limit;
     }
 
+    console.log('OrderService - filters being sent to supabaseDb:', filters);
+    console.log('OrderService - userId being filtered:', userId);
+
     const { data: orders, error } = await supabaseDb.getOrders(filters);
     
     if (error) {
