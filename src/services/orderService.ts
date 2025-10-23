@@ -52,14 +52,14 @@ const getAuthHeaders = (): HeadersInit => {
 
 export const orderService = {
   // Get orders for the authenticated user
-  getUserOrders: async (userId: number, params?: {
+  getUserOrders: async (userId: string, params?: {
     status?: string;
     page?: number;
     limit?: number;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
   }): Promise<OrdersResponse> => {
-    const filters: any = { userId: userId.toString() };
+    const filters: any = { userId };
     
     if (params?.status && params.status !== 'all') {
       filters.status = params.status;
@@ -77,11 +77,29 @@ export const orderService = {
 
     console.log('User orders:', orders);
 
+    // Transform the orders to match the expected format
+    const transformedOrders = orders?.map(order => ({
+      ...order,
+      items: order.order_items?.map((item: any) => ({
+        id: item.id,
+        product_id: item.product_id,
+        product_name: item.products?.name || 'Product name not available',
+        product_image: item.products?.product_images?.[0]?.url || '',
+        quantity: item.quantity,
+        price: item.price || '0',
+        size: item.size,
+        color: item.color,
+      })) || [],
+      // Create user info for consistent display
+      user_name: order.users ? `${order.users.first_name} ${order.users.last_name}`.trim() : 'Unknown User',
+      user_email: order.users?.email || 'No email',
+    })) || [];
+
     return {
       message: 'Orders retrieved successfully',
       data: {
-        orders: orders || [],
-        total: orders?.length || 0,
+        orders: transformedOrders,
+        total: transformedOrders.length,
         page: params?.page || 1,
         limit: params?.limit || 10,
       },

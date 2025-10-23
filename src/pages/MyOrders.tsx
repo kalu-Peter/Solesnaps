@@ -1,4 +1,4 @@
- import Header from "@/components/Header";
+import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,7 @@ import {
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { orderService, Order, OrderItem } from '../services/orderService';
+import { orderService, Order, OrderItem } from "../services/orderService";
 
 const MyOrders = () => {
   const { isAuthenticated, user } = useAuth();
@@ -41,79 +41,66 @@ const MyOrders = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       if (!user?.id) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         // Debug authentication state
-        console.log('Auth state:', { 
-          user: user?.id, 
-          isAuthenticated, 
-          token: localStorage.getItem('auth_token') ? 'present' : 'missing',
-          userObject: user // Add full user object to debug
+        console.log("Auth state:", {
+          userId: user.id,
+          isAuthenticated,
+          token: localStorage.getItem("auth_token") ? "present" : "missing",
+          userObject: user, // Add full user object to debug
         });
-        
+
         // Convert sortBy to API parameters
         let sortParams = {};
         switch (sortBy) {
           case "newest":
-            sortParams = { sort_by: 'created_at', sort_order: 'desc' as const };
+            sortParams = { sort_by: "created_at", sort_order: "desc" as const };
             break;
           case "oldest":
-            sortParams = { sort_by: 'created_at', sort_order: 'asc' as const };
+            sortParams = { sort_by: "created_at", sort_order: "asc" as const };
             break;
           case "amount-high":
-            sortParams = { sort_by: 'total_amount', sort_order: 'desc' as const };
+            sortParams = {
+              sort_by: "total_amount",
+              sort_order: "desc" as const,
+            };
             break;
           case "amount-low":
-            sortParams = { sort_by: 'total_amount', sort_order: 'asc' as const };
+            sortParams = {
+              sort_by: "total_amount",
+              sort_order: "asc" as const,
+            };
             break;
           default:
-            sortParams = { sort_by: 'created_at', sort_order: 'desc' as const };
+            sortParams = { sort_by: "created_at", sort_order: "desc" as const };
         }
-        
+
         const response = await orderService.getUserOrders(user.id, {
           status: filterStatus !== "all" ? filterStatus : undefined,
           limit: 50, // Fetch up to 50 orders
-          ...sortParams
+          ...sortParams,
         });
-        
-        // Ensure orders data is properly structured
+
+        console.log("Orders response:", response);
+
+        // The orders are already properly formatted by the orderService
         const ordersData = response?.data?.orders || [];
-        const validOrders = ordersData.map((order: any) => ({
-          ...order,
-          items: (order.items || []).map((item: any) => ({
-            ...item,
-            product_name: typeof item.product_name === 'string' 
-              ? item.product_name 
-              : (item.product_name as any)?.name || 'Product name not available',
-            price: item.price || '0',
-            quantity: item.quantity || 0,
-            product_image: item.product_image || '',
-          })),
-          total_amount: order.total_amount || '0',
-          created_at: order.created_at || new Date().toISOString(),
-          shipping_address: typeof order.shipping_address === 'string' 
-            ? order.shipping_address 
-            : (order.shipping_address as any)?.address || 'Address not available',
-          payment_method: typeof order.payment_method === 'string' 
-            ? order.payment_method 
-            : (order.payment_method as any)?.method || 'Payment method not available',
-          tracking_number: order.tracking_number || null,
-          estimated_delivery: order.estimated_delivery || null,
-        }));
-        
-        setOrders(validOrders);
+        setOrders(ordersData);
       } catch (err) {
         console.error("Failed to fetch orders:", err);
-        
+
         // Handle different types of errors
         if (err instanceof Error) {
-          if (err.message.includes('Unauthorized')) {
+          if (err.message.includes("Unauthorized")) {
             setError("Your session has expired. Please login again.");
-          } else if (err.message.includes('Forbidden')) {
-            setError("You don't have permission to access these orders. Please contact support if this seems incorrect.");
+          } else if (err.message.includes("Forbidden")) {
+            setError(
+              "You don't have permission to access these orders. Please contact support if this seems incorrect."
+            );
           } else {
             setError(err.message);
           }
@@ -141,67 +128,79 @@ const MyOrders = () => {
 
   // Filter and sort orders
   const filteredOrders = (orders || [])
-    .filter(order => filterStatus === "all" || order.status === filterStatus)
+    .filter((order) => filterStatus === "all" || order.status === filterStatus)
     .sort((a, b) => {
       switch (sortBy) {
         case "newest":
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+          return (
+            new Date(b.created_at || 0).getTime() -
+            new Date(a.created_at || 0).getTime()
+          );
         case "oldest":
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          return (
+            new Date(a.created_at || 0).getTime() -
+            new Date(b.created_at || 0).getTime()
+          );
         case "amount-high":
-          return parseFloat(b.total_amount || '0') - parseFloat(a.total_amount || '0');
+          return (
+            parseFloat(b.total_amount || "0") -
+            parseFloat(a.total_amount || "0")
+          );
         case "amount-low":
-          return parseFloat(a.total_amount || '0') - parseFloat(b.total_amount || '0');
+          return (
+            parseFloat(a.total_amount || "0") -
+            parseFloat(b.total_amount || "0")
+          );
         default:
           return 0;
       }
     });
 
-  const getStatusIcon = (status: Order['status']) => {
+  const getStatusIcon = (status: Order["status"]) => {
     switch (status) {
-      case 'pending':
+      case "pending":
         return <Clock className="h-4 w-4" />;
-      case 'confirmed':
+      case "confirmed":
         return <CheckCircle className="h-4 w-4" />;
-      case 'processing':
+      case "processing":
         return <RefreshCw className="h-4 w-4" />;
-      case 'shipped':
+      case "shipped":
         return <Truck className="h-4 w-4" />;
-      case 'delivered':
+      case "delivered":
         return <Package className="h-4 w-4" />;
-      case 'cancelled':
+      case "cancelled":
         return <XCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
   };
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: Order["status"]) => {
     switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'processing':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'shipped':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'delivered':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "confirmed":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "processing":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "shipped":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "delivered":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-200";
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -222,9 +221,7 @@ const MyOrders = () => {
                 My Orders
               </h1>
             </div>
-            <p className="text-muted-foreground">
-              Loading your orders...
-            </p>
+            <p className="text-muted-foreground">Loading your orders...</p>
           </div>
         </section>
       </div>
@@ -245,7 +242,8 @@ const MyOrders = () => {
             </h1>
           </div>
           <p className="text-muted-foreground">
-            Track and manage your orders. View order details, delivery status, and order history.
+            Track and manage your orders. View order details, delivery status,
+            and order history.
           </p>
         </div>
       </section>
@@ -279,8 +277,12 @@ const MyOrders = () => {
                   <SelectContent>
                     <SelectItem value="newest">Newest First</SelectItem>
                     <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="amount-high">Amount: High to Low</SelectItem>
-                    <SelectItem value="amount-low">Amount: Low to High</SelectItem>
+                    <SelectItem value="amount-high">
+                      Amount: High to Low
+                    </SelectItem>
+                    <SelectItem value="amount-low">
+                      Amount: Low to High
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -324,8 +326,13 @@ const MyOrders = () => {
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Try Again
                   </Button>
-                  {(error?.includes('session has expired') || error?.includes('Unauthorized') || error?.includes('permission')) && (
-                    <Button variant="outline" onClick={() => navigate('/login')}>
+                  {(error?.includes("session has expired") ||
+                    error?.includes("Unauthorized") ||
+                    error?.includes("permission")) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate("/login")}
+                    >
                       <LogIn className="h-4 w-4 mr-2" />
                       Login
                     </Button>
@@ -341,7 +348,7 @@ const MyOrders = () => {
                   No Orders Found
                 </h3>
                 <p className="text-muted-foreground text-center mb-6">
-                  {filterStatus === "all" 
+                  {filterStatus === "all"
                     ? "You haven't placed any orders yet. Start shopping to see your orders here!"
                     : `No ${filterStatus} orders found. Try changing the filter.`}
                 </p>
@@ -367,16 +374,16 @@ const MyOrders = () => {
                           </span>
                           <span className="flex items-center gap-1">
                             <CreditCard className="h-4 w-4" />
-                            {typeof order.payment_method === 'string' 
-                              ? order.payment_method 
-                              : (order.payment_method as any)?.method || 'Payment method not available'
-                            }
+                            {order.payment_method ||
+                              "Payment method not available"}
                           </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge 
-                          className={`${getStatusColor(order.status)} capitalize`}
+                        <Badge
+                          className={`${getStatusColor(
+                            order.status
+                          )} capitalize`}
                           variant="outline"
                         >
                           {getStatusIcon(order.status)}
@@ -384,37 +391,38 @@ const MyOrders = () => {
                         </Badge>
                         <div className="text-right">
                           <div className="text-lg font-semibold">
-                            KES {parseFloat(order.total_amount || '0').toLocaleString()}
+                            KES{" "}
+                            {parseFloat(
+                              order.total_amount || "0"
+                            ).toLocaleString()}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {(order.items || []).length} item{(order.items || []).length > 1 ? 's' : ''}
+                            {(order.items || []).length} item
+                            {(order.items || []).length > 1 ? "s" : ""}
                           </div>
                         </div>
                       </div>
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent className="p-6">
                     {/* Order Items */}
                     <div className="space-y-4">
                       {(order.items || []).map((item) => (
                         <div key={item.id} className="flex items-center gap-4">
                           <img
-                            src={item.product_image || '/placeholder-product.jpg'}
-                            alt={typeof item.product_name === 'string' ? item.product_name : 'Product'}
+                            src={
+                              item.product_image || "/placeholder-product.jpg"
+                            }
+                            alt={item.product_name}
                             className="h-16 w-16 rounded-lg object-cover bg-muted"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.src = '/placeholder-product.jpg';
+                              target.src = "/placeholder-product.jpg";
                             }}
                           />
                           <div className="flex-1">
-                            <h4 className="font-medium">
-                              {typeof item.product_name === 'string' 
-                                ? item.product_name 
-                                : (item.product_name as any)?.name || 'Product name not available'
-                              }
-                            </h4>
+                            <h4 className="font-medium">{item.product_name}</h4>
                             <div className="text-sm text-muted-foreground">
                               {item.size && `Size: ${item.size}`}
                               {item.size && item.color && " • "}
@@ -423,7 +431,8 @@ const MyOrders = () => {
                           </div>
                           <div className="text-right">
                             <div className="font-medium">
-                              KES {parseFloat(item.price || '0').toLocaleString()}
+                              KES{" "}
+                              {parseFloat(item.price || "0").toLocaleString()}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               Qty: {item.quantity || 0}
@@ -443,13 +452,21 @@ const MyOrders = () => {
                           Shipping Address
                         </h5>
                         <p className="text-sm text-muted-foreground">
-                          {typeof order.shipping_address === 'string' 
-                            ? order.shipping_address 
-                            : (order.shipping_address as any)?.address || 'Address not available'
-                          }
+                          {typeof order.shipping_address === "object" &&
+                          order.shipping_address
+                            ? (() => {
+                                const addr = order.shipping_address as any;
+                                return (
+                                  `${addr.city || ""}, ${
+                                    addr.pickup_location || ""
+                                  }`.replace(/^,\s*|,\s*$/g, "") ||
+                                  "Address not available"
+                                );
+                              })()
+                            : order.shipping_address || "Address not available"}
                         </p>
                       </div>
-                      
+
                       {order.tracking_number && (
                         <div>
                           <h5 className="font-medium flex items-center gap-2 mb-2">
@@ -461,7 +478,10 @@ const MyOrders = () => {
                           </p>
                           {order.estimated_delivery && (
                             <p className="text-sm text-muted-foreground">
-                              Est. Delivery: {new Date(order.estimated_delivery).toLocaleDateString()}
+                              Est. Delivery:{" "}
+                              {new Date(
+                                order.estimated_delivery
+                              ).toLocaleDateString()}
                             </p>
                           )}
                         </div>
@@ -480,7 +500,7 @@ const MyOrders = () => {
                           Track Package
                         </Button>
                       )}
-                      {order.status === 'delivered' && (
+                      {order.status === "delivered" && (
                         <Button variant="outline" size="sm">
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Reorder

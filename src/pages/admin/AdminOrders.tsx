@@ -63,7 +63,7 @@ import {
 } from "@/lib/orders";
 
 const AdminOrders = () => {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, user, isAdmin } = useAuth();
   const authenticatedFetch = useAuthenticatedFetch();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -91,10 +91,11 @@ const AdminOrders = () => {
         setLoading(true);
         setError(null);
 
-        const filters: any = { limit: 10 };
+        const filters: any = { limit: 50 }; // Increase limit to see more orders
         if (selectedStatus !== "all") {
           filters.status = selectedStatus;
         }
+        // For admin, we don't filter by userId - we want all orders
 
         const { data: orders, error } = await supabaseDb.getOrders(filters);
 
@@ -103,20 +104,44 @@ const AdminOrders = () => {
           throw new Error("Failed to fetch orders");
         }
 
-        console.log("Orders:", orders);
-
-        // Convert string numbers to actual numbers
+        // Convert string numbers to actual numbers and ensure user data is available
         const processedOrders =
-          orders?.map((order: any) => ({
-            ...order,
-            total_amount: parseFloat(order.total_amount || 0),
-            subtotal_amount: order.subtotal_amount
-              ? parseFloat(order.subtotal_amount)
-              : undefined,
-            shipping_amount: order.shipping_amount
-              ? parseFloat(order.shipping_amount)
-              : undefined,
-          })) || [];
+          orders?.map((order: any) => {
+            return {
+              ...order,
+              total_amount: parseFloat(order.total_amount || 0),
+              subtotal_amount: order.subtotal_amount
+                ? parseFloat(order.subtotal_amount)
+                : undefined,
+              shipping_amount: order.shipping_amount
+                ? parseFloat(order.shipping_amount)
+                : undefined,
+              // Ensure user information is properly formatted
+              user_name: order.users
+                ? `${order.users.first_name || ""} ${
+                    order.users.last_name || ""
+                  }`.trim() || "Unknown User"
+                : `User ID: ${order.user_id || "Unknown"}`, // Show user ID as fallback
+              user_email:
+                order.users?.email || `user-${order.user_id}@unknown.com`,
+              user_phone: order.users?.phone || "No phone",
+              // Count items properly
+              item_count: order.order_items?.length || 0,
+              // Transform order items for display
+              items:
+                order.order_items?.map((item: any) => ({
+                  id: item.id,
+                  product_id: item.product_id,
+                  product_name:
+                    item.products?.name || "Product name not available",
+                  product_image: item.products?.product_images?.[0]?.url || "",
+                  quantity: item.quantity,
+                  price: item.price || "0",
+                  size: item.size,
+                  color: item.color,
+                })) || [],
+            };
+          }) || [];
 
         setOrders(processedOrders);
         setPagination({
@@ -215,7 +240,31 @@ const AdminOrders = () => {
       }
 
       console.log("Order details:", orderDetail);
-      setSelectedOrder(orderDetail);
+
+      // Ensure the order detail has properly formatted user information
+      const processedOrderDetail = {
+        ...orderDetail,
+        user_name: orderDetail.users
+          ? `${orderDetail.users.first_name || ""} ${
+              orderDetail.users.last_name || ""
+            }`.trim() || "Unknown User"
+          : "Unknown User",
+        user_email: orderDetail.users?.email || "No email",
+        user_phone: orderDetail.users?.phone || "No phone",
+        items:
+          orderDetail.order_items?.map((item: any) => ({
+            id: item.id,
+            product_id: item.product_id,
+            product_name: item.products?.name || "Product name not available",
+            product_image: item.products?.product_images?.[0]?.url || "",
+            quantity: item.quantity,
+            price: item.price || "0",
+            size: item.size,
+            color: item.color,
+          })) || [],
+      };
+
+      setSelectedOrder(processedOrderDetail);
       setIsOrderDetailOpen(true);
     } catch (err) {
       console.error("Error fetching order details:", err);
@@ -264,6 +313,16 @@ const AdminOrders = () => {
           shipping_amount: order.shipping_amount
             ? parseFloat(order.shipping_amount)
             : undefined,
+          // Ensure user information is properly formatted
+          user_name: order.users
+            ? `${order.users.first_name || ""} ${
+                order.users.last_name || ""
+              }`.trim() || "Unknown User"
+            : "Unknown User",
+          user_email: order.users?.email || "No email",
+          user_phone: order.users?.phone || "No phone",
+          // Count items properly
+          item_count: order.order_items?.length || 0,
         }));
 
         setOrders(processedOrders);
@@ -458,115 +517,127 @@ const AdminOrders = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">
-                    {order.order_number || `#${order.id}`}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">
-                        {order.user_name || "Unknown User"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {order.user_email || "No email"}
-                      </div>
+              {filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    <div className="text-muted-foreground">
+                      {orders.length === 0
+                        ? "No orders found"
+                        : "No orders match your search"}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {order.item_count} item
-                      {order.item_count !== 1 ? "s" : ""}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    Ksh{" "}
-                    {parseFloat(order.total_amount?.toString() || "0").toFixed(
-                      2
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(order.status)}
-                      <Badge
-                        variant="secondary"
-                        className={getStatusColor(order.status)}
-                      >
-                        {order.status}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={getPaymentStatusColor(
-                        order.payment_status || "pending"
-                      )}
-                    >
-                      {order.payment_status || "pending"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          disabled={updatingStatus === order.id}
-                        >
-                          {updatingStatus === order.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <MoreHorizontal className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => handleViewOrder(order)}
-                          disabled={loadingOrderDetail}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Update Status</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleUpdateOrderStatus(order.id, "processing")
-                          }
-                          disabled={updatingStatus === order.id}
-                        >
-                          <Package className="mr-2 h-4 w-4" />
-                          Mark Processing
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleUpdateOrderStatus(order.id, "shipped")
-                          }
-                          disabled={updatingStatus === order.id}
-                        >
-                          <Truck className="mr-2 h-4 w-4" />
-                          Mark Shipped
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleUpdateOrderStatus(order.id, "completed")
-                          }
-                          disabled={updatingStatus === order.id}
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Mark Completed
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">
+                      {order.order_number || `#${order.id}`}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">
+                          {order.user_name || "Unknown User"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {order.user_email || "No email"}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {order.item_count} item
+                        {order.item_count !== 1 ? "s" : ""}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      Ksh{" "}
+                      {parseFloat(
+                        order.total_amount?.toString() || "0"
+                      ).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(order.status)}
+                        <Badge
+                          variant="secondary"
+                          className={getStatusColor(order.status)}
+                        >
+                          {order.status}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={getPaymentStatusColor(
+                          order.payment_status || "pending"
+                        )}
+                      >
+                        {order.payment_status || "pending"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            disabled={updatingStatus === order.id}
+                          >
+                            {updatingStatus === order.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => handleViewOrder(order)}
+                            disabled={loadingOrderDetail}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Update Status</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleUpdateOrderStatus(order.id, "processing")
+                            }
+                            disabled={updatingStatus === order.id}
+                          >
+                            <Package className="mr-2 h-4 w-4" />
+                            Mark Processing
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleUpdateOrderStatus(order.id, "shipped")
+                            }
+                            disabled={updatingStatus === order.id}
+                          >
+                            <Truck className="mr-2 h-4 w-4" />
+                            Mark Shipped
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleUpdateOrderStatus(order.id, "completed")
+                            }
+                            disabled={updatingStatus === order.id}
+                          >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Mark Completed
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
