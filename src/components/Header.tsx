@@ -24,7 +24,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 export default function Header() {
   const { totalItems, openCart } = useCart();
@@ -69,24 +75,31 @@ export default function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            <Link
-              to="/shoes"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Shoes
-            </Link>
-            <Link
-              to="/new-arrivals"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              New Arrivals
-            </Link>
-            <Link
-              to="/sale"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Sale
-            </Link>
+            {/* Hide store navigation for admin users */}
+            {!isAdmin && (
+              <>
+                <Link
+                  to="/shoes"
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  Shoes
+                </Link>
+                <Link
+                  to="/new-arrivals"
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  New Arrivals
+                </Link>
+                <Link
+                  to="/sale"
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  Sale
+                </Link>
+              </>
+            )}
+
+            {/* Admin quick link (kept visible to admins) */}
             {isAdmin && (
               <Link
                 to="/admin"
@@ -114,9 +127,14 @@ export default function Header() {
                       className="relative h-8 w-8 rounded-full"
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.avatar_url} alt={getFullName()} />
+                        <AvatarImage
+                          src={user?.avatar_url}
+                          alt={getFullName()}
+                        />
                         <AvatarFallback className="bg-primary text-primary-foreground">
-                          {user ? getUserInitials(user.first_name, user.last_name) : "U"}
+                          {user
+                            ? getUserInitials(user.first_name, user.last_name)
+                            : "U"}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -164,20 +182,22 @@ export default function Header() {
               )}
             </div>
 
-            {/* Cart Button - Always Visible */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={openCart}
-            >
-              <ShoppingBag className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 text-xs flex items-center justify-center bg-primary text-primary-foreground rounded-full animate-pulse">
-                  {totalItems > 99 ? "99+" : totalItems}
-                </span>
-              )}
-            </Button>
+            {/* Cart Button - hidden for admin users (admins don't use store cart) */}
+            {!isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={openCart}
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 text-xs flex items-center justify-center bg-primary text-primary-foreground rounded-full animate-pulse">
+                    {totalItems > 99 ? "99+" : totalItems}
+                  </span>
+                )}
+              </Button>
+            )}
 
             {/* Mobile Menu Button */}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -190,7 +210,7 @@ export default function Header() {
                 <SheetHeader>
                   <SheetTitle className="text-left">Menu</SheetTitle>
                 </SheetHeader>
-                
+
                 <div className="flex flex-col space-y-4 mt-6">
                   {/* Search */}
                   <Button variant="ghost" className="justify-start">
@@ -198,28 +218,63 @@ export default function Header() {
                     Search
                   </Button>
 
-                  {/* Navigation Links */}
-                  <Link
-                    to="/shoes"
-                    className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
-                    onClick={closeMobileMenu}
-                  >
-                    Shoes
-                  </Link>
-                  <Link
-                    to="/new-arrivals"
-                    className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
-                    onClick={closeMobileMenu}
-                  >
-                    New Arrivals
-                  </Link>
-                  <Link
-                    to="/sale"
-                    className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
-                    onClick={closeMobileMenu}
-                  >
-                    Sale
-                  </Link>
+                  {/* Navigation Links - show store links for customers, admin links for admins */}
+                  {!isAdmin ? (
+                    <>
+                      <Link
+                        to="/shoes"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        Shoes
+                      </Link>
+                      <Link
+                        to="/new-arrivals"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        New Arrivals
+                      </Link>
+                      <Link
+                        to="/sale"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        Sale
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        to="/admin"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        Admin Dashboard
+                      </Link>
+                      <Link
+                        to="/admin/products"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        Products
+                      </Link>
+                      <Link
+                        to="/admin/orders"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        Orders
+                      </Link>
+                      <Link
+                        to="/admin/users"
+                        className="flex items-center py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={closeMobileMenu}
+                      >
+                        Users
+                      </Link>
+                    </>
+                  )}
 
                   {/* User Section */}
                   <div className="border-t pt-4 mt-4">
@@ -227,17 +282,29 @@ export default function Header() {
                       <div className="space-y-4">
                         <div className="flex items-center space-x-3 pb-2">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={user?.avatar_url} alt={getFullName()} />
+                            <AvatarImage
+                              src={user?.avatar_url}
+                              alt={getFullName()}
+                            />
                             <AvatarFallback className="bg-primary text-primary-foreground">
-                              {user ? getUserInitials(user.first_name, user.last_name) : "U"}
+                              {user
+                                ? getUserInitials(
+                                    user.first_name,
+                                    user.last_name
+                                  )
+                                : "U"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium">{getFullName()}</p>
-                            <p className="text-xs text-muted-foreground">{user?.email}</p>
+                            <p className="text-sm font-medium">
+                              {getFullName()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {user?.email}
+                            </p>
                           </div>
                         </div>
-                        
+
                         <Button
                           variant="ghost"
                           className="w-full justify-start"
@@ -249,7 +316,7 @@ export default function Header() {
                           <Settings className="mr-2 h-4 w-4" />
                           Profile
                         </Button>
-                        
+
                         <Button
                           variant="ghost"
                           className="w-full justify-start"
@@ -261,7 +328,7 @@ export default function Header() {
                           <Package className="mr-2 h-4 w-4" />
                           My Orders
                         </Button>
-                        
+
                         {isAdmin && (
                           <Button
                             variant="ghost"
@@ -275,7 +342,7 @@ export default function Header() {
                             Admin Dashboard
                           </Button>
                         )}
-                        
+
                         <Button
                           variant="ghost"
                           className="w-full justify-start text-destructive hover:text-destructive"
