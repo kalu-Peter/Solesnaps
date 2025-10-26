@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowRight, Package, Shield, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { productService, Product } from "@/services/productService";
 
 const Index = () => {
@@ -291,19 +291,28 @@ const Index = () => {
               <h4 className="font-semibold mb-4 text-foreground">Shop</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/shoes"
+                    className="hover:text-primary transition-colors"
+                  >
                     Shoes
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/new-arrivals"
+                    className="hover:text-primary transition-colors"
+                  >
                     New Arrivals
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/sale"
+                    className="hover:text-primary transition-colors"
+                  >
                     Sale
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -311,24 +320,36 @@ const Index = () => {
               <h4 className="font-semibold mb-4 text-foreground">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/contact"
+                    className="hover:text-primary transition-colors"
+                  >
                     Contact Us
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/faqs"
+                    className="hover:text-primary transition-colors"
+                  >
                     FAQs
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/shipping"
+                    className="hover:text-primary transition-colors"
+                  >
                     Shipping
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/returns"
+                    className="hover:text-primary transition-colors"
+                  >
                     Returns
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -336,24 +357,36 @@ const Index = () => {
               <h4 className="font-semibold mb-4 text-foreground">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/about"
+                    className="hover:text-primary transition-colors"
+                  >
                     About Us
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/careers"
+                    className="hover:text-primary transition-colors"
+                  >
                     Careers
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/terms"
+                    className="hover:text-primary transition-colors"
+                  >
                     Terms
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-primary transition-colors">
+                  <Link
+                    to="/privacy"
+                    className="hover:text-primary transition-colors"
+                  >
                     Privacy
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>

@@ -24,6 +24,14 @@ import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
 import MyOrders from "./pages/MyOrders";
 import ResponsiveTest from "./pages/ResponsiveTest";
+import Contact from "./pages/Contact";
+import FAQs from "./pages/FAQs";
+import Shipping from "./pages/Shipping";
+import Returns from "./pages/Returns";
+import About from "./pages/About";
+import Careers from "./pages/Careers";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRedirect from "./components/AdminRedirect";
 
@@ -67,6 +75,70 @@ const App = () => (
                 element={
                   <AdminRedirect>
                     <Sale />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/contact"
+                element={
+                  <AdminRedirect>
+                    <Contact />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/faqs"
+                element={
+                  <AdminRedirect>
+                    <FAQs />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/shipping"
+                element={
+                  <AdminRedirect>
+                    <Shipping />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/returns"
+                element={
+                  <AdminRedirect>
+                    <Returns />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/about"
+                element={
+                  <AdminRedirect>
+                    <About />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/careers"
+                element={
+                  <AdminRedirect>
+                    <Careers />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <AdminRedirect>
+                    <Terms />
+                  </AdminRedirect>
+                }
+              />
+              <Route
+                path="/privacy"
+                element={
+                  <AdminRedirect>
+                    <Privacy />
                   </AdminRedirect>
                 }
               />
