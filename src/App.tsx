@@ -36,6 +36,7 @@ import SignUp from "./pages/SignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRedirect from "./components/AdminRedirect";
 import GlobalWhatsAppButton from "./components/GlobalWhatsAppButton";
+import GlobalFooter from "./components/GlobalFooter";
 
 const queryClient = new QueryClient();
 
@@ -215,6 +216,9 @@ const App = () => {
 
               {/* Global WhatsApp button component will handle admin hiding */}
               <GlobalWhatsAppButton />
+
+              {/* Global footer (hidden on /admin routes) */}
+              <GlobalFooter />
 
               <Cart />
             </BrowserRouter>
