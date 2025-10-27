@@ -297,7 +297,7 @@ export default function Header() {
                   )}
 
                   {/* User Section */}
-                  <div className="border-t pt-4 mt-4">
+                  <div className="border-t pt-4 mt-4 space-y-2">
                     {isAuthenticated ? (
                       <div className="space-y-4">
                         <div className="flex items-center space-x-3 pb-2">
