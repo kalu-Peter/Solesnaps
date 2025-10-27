@@ -37,9 +37,18 @@ export default function Header() {
   const { user, isAuthenticated, isAdmin, logout, getFullName } = useAuth();
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">(
+    "signin"
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLoginClick = () => {
+    setAuthModalMode("signin");
+    setIsAuthModalOpen(true);
+  };
+
+  const handleSignUpClick = () => {
+    setAuthModalMode("signup");
     setIsAuthModalOpen(true);
   };
 
@@ -176,9 +185,23 @@ export default function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button variant="ghost" size="icon" onClick={handleLoginClick}>
-                  <User className="h-5 w-5" />
-                </Button>
+                <>
+                  <Button
+                    variant="default"
+                    className="hidden sm:inline-flex mr-2"
+                    onClick={handleSignUpClick}
+                  >
+                    Sign Up
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLoginClick}
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </>
               )}
             </div>
 
@@ -353,17 +376,31 @@ export default function Header() {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        variant="default"
-                        className="w-full"
-                        onClick={() => {
-                          handleLoginClick();
-                          closeMobileMenu();
-                        }}
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        Sign In
-                      </Button>
+                      <>
+                        <Button
+                          variant="default"
+                          className="w-full"
+                          onClick={() => {
+                            handleSignUpClick();
+                            closeMobileMenu();
+                          }}
+                        >
+                          <User className="mr-2 h-4 w-4" />
+                          Sign Up
+                        </Button>
+
+                        <Button
+                          variant="default"
+                          className="w-full"
+                          onClick={() => {
+                            handleLoginClick();
+                            closeMobileMenu();
+                          }}
+                        >
+                          <User className="mr-2 h-4 w-4" />
+                          Sign In
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -376,7 +413,7 @@ export default function Header() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={handleCloseAuthModal}
-        initialMode="signin"
+        initialMode={authModalMode}
       />
     </>
   );
