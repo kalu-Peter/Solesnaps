@@ -1,8 +1,9 @@
 import Header from "@/components/Header";
 import { useState } from "react";
 
-// Updated WhatsApp number (E.164 without the leading '+')
-const WHATSAPP_NUMBER = "254111532381";
+// Read WhatsApp number from Vite env (VITE_WHATSAPP_NUMBER). Fallback to previous value
+const WHATSAPP_NUMBER =
+  (import.meta.env.VITE_WHATSAPP_NUMBER as string) || "254111532381";
 
 const Contact = () => {
   const [name, setName] = useState("");
