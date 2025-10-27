@@ -5,6 +5,9 @@ import HeroCarousel from "@/components/HeroCarousel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowRight, Package, Shield, Truck } from "lucide-react";
+import wowmenImg from "@/assets/wowmen.jpeg";
+import uniImg from "@/assets/uni.jpeg";
+import ladiesImg from "@/assets/ladies.jpeg";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { productService, Product } from "@/services/productService";
@@ -202,9 +205,13 @@ const Index = () => {
               className="group relative h-64 sm:h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer sm:col-span-2 md:col-span-1"
               onClick={() => handleGenderFilter("male")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-blue-800" />
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${ladiesImg})` }}
+              />
+              <div className="absolute inset-0 bg-black/30" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-6 sm:p-8">
-                <div className="text-3xl sm:text-5xl mb-2 sm:mb-4">👨</div>
+                {/* icon removed per request */}
                 <h3 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
                   Men's
                 </h3>
@@ -227,9 +234,13 @@ const Index = () => {
               className="group relative h-64 sm:h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
               onClick={() => handleGenderFilter("female")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600" />
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${wowmenImg})` }}
+              />
+              <div className="absolute inset-0 bg-black/30" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-6 sm:p-8">
-                <div className="text-3xl sm:text-5xl mb-2 sm:mb-4">👩</div>
+                {/* icon removed per request */}
                 <h3 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
                   Women's
                 </h3>
@@ -252,9 +263,13 @@ const Index = () => {
               className="group relative h-64 sm:h-80 overflow-hidden rounded-2xl shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-all duration-300 cursor-pointer"
               onClick={() => handleGenderFilter("unisex")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-teal-600" />
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${uniImg})` }}
+              />
+              <div className="absolute inset-0 bg-black/30" />
               <div className="relative h-full flex flex-col items-center justify-center text-white p-6 sm:p-8">
-                <div className="text-3xl sm:text-5xl mb-2 sm:mb-4">👫</div>
+                {/* icon removed per request */}
                 <h3 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
                   Unisex
                 </h3>
