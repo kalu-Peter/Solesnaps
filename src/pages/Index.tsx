@@ -93,8 +93,8 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
             <div className="flex items-center gap-4 text-center sm:text-left">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto sm:mx-0">
-                <Truck className="h-6 w-6 text-primary" />
+              <div className="h-12 w-12 rounded-full bg-black flex items-center justify-center mx-auto sm:mx-0">
+                <Truck className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Free Shipping</h3>
@@ -104,8 +104,8 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-4 text-center sm:text-left">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto sm:mx-0">
-                <Shield className="h-6 w-6 text-primary" />
+              <div className="h-12 w-12 rounded-full bg-black flex items-center justify-center mx-auto sm:mx-0">
+                <Shield className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">
@@ -115,8 +115,8 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-4 text-center sm:text-left sm:col-span-2 md:col-span-1">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto sm:mx-0">
-                <Package className="h-6 w-6 text-primary" />
+              <div className="h-12 w-12 rounded-full bg-black flex items-center justify-center mx-auto sm:mx-0">
+                <Package className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Easy Returns</h3>

@@ -238,8 +238,8 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
                 "w-3 h-3 rounded-full transition-colors",
                 currentSlide === index ||
                   (currentSlide === carouselSlides.length && index === 0)
-                  ? "bg-white"
-                  : "bg-white/50 hover:bg-white/70"
+                  ? "bg-black"
+                  : "bg-black/50 hover:bg-black/70"
               )}
               aria-label={`Go to slide ${index + 1}`}
             />
@@ -249,7 +249,7 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
         {/* Progress Bar */}
         <div className="absolute bottom-0 left-0 w-full h-1 bg-black/20">
           <div
-            className="h-full bg-primary transition-all duration-700 ease-in-out"
+            className="h-full bg-black transition-all duration-700 ease-in-out"
             style={{
               width: `${
                 ((currentSlide >= carouselSlides.length
