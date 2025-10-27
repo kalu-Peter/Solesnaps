@@ -223,14 +223,19 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+        <div className="sticky top-0 bg-white/70 backdrop-blur-sm border-b p-4 flex justify-between items-center z-50">
           <h2 className="text-lg font-semibold">Product Details</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="bg-red-500 text-white hover:bg-red-600 rounded-full"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6 pt-0">
           {/* Images Section */}
           <div className="space-y-4">
             {/* Main Image */}
