@@ -151,19 +151,19 @@ const NewArrivals = () => {
         <div className="container mx-auto px-4">
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+              <Sparkles className="h-8 w-8 text-orange-500 animate-pulse" />
               <h1 className="text-4xl md:text-5xl font-bold text-foreground">
                 New Arrivals
               </h1>
-              <Sparkles className="h-8 w-8 text-accent animate-pulse" />
+              <Sparkles className="h-8 w-8 text-orange-500 animate-pulse" />
             </div>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Be the first to get your hands on our latest collection. Fresh
               styles, cutting-edge technology, and premium quality.
             </p>
             <div className="mt-6">
-              <Badge variant="secondary" className="text-sm px-4 py-2">
-                <Clock className="h-4 w-4 mr-2" />
+              <Badge className="bg-orange-500 text-white text-sm px-4 py-2 shadow-lg">
+                <Clock className="h-4 w-4 mr-2 text-white" />
                 Updated Daily
               </Badge>
             </div>
@@ -177,8 +177,8 @@ const NewArrivals = () => {
           <div className="bg-gradient-to-r from-primary/5 to-accent/5 rounded-2xl p-8 mb-8 border border-border">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
               <div className="flex flex-col items-center">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <Sparkles className="h-6 w-6 text-primary" />
+                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                  <Sparkles className="h-6 w-6 text-orange-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">
                   Latest Trends
@@ -188,8 +188,8 @@ const NewArrivals = () => {
                 </p>
               </div>
               <div className="flex flex-col items-center">
-                <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mb-3">
-                  <Star className="h-6 w-6 text-accent" />
+                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                  <Star className="h-6 w-6 text-orange-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">
                   Premium Quality
@@ -199,8 +199,8 @@ const NewArrivals = () => {
                 </p>
               </div>
               <div className="flex flex-col items-center">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <Clock className="h-6 w-6 text-primary" />
+                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                  <Clock className="h-6 w-6 text-orange-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">
                   Limited Time
@@ -369,8 +369,8 @@ const NewArrivals = () => {
 
           {/* Newsletter Signup */}
           <div className="mt-16 text-center">
-            <div className="bg-gradient-to-r from-primary/5 to-accent/5 rounded-2xl p-8 border border-border max-w-2xl mx-auto">
-              <Sparkles className="h-12 w-12 text-primary mx-auto mb-4" />
+            <div className="bg-gradient-to-r from-orange-500/5 to-orange-500/10 rounded-2xl p-8 border border-border max-w-2xl mx-auto">
+              <Sparkles className="h-12 w-12 text-orange-500 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-foreground mb-3">
                 Never Miss New Arrivals
               </h3>
