@@ -295,7 +295,7 @@ const NewArrivals = () => {
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="text-center">
-                <Sparkles className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
+                <Sparkles className="h-8 w-8 text-orange-500 animate-spin mx-auto mb-4" />
                 <p className="text-muted-foreground">Loading new arrivals...</p>
               </div>
             </div>
