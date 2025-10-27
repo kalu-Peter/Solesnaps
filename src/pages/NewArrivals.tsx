@@ -350,8 +350,8 @@ const NewArrivals = () => {
                   />
                   {/* New Badge Overlay */}
                   <div className="absolute top-3 left-3 z-10">
-                    <Badge className="bg-primary text-primary-foreground shadow-lg">
-                      <Sparkles className="h-3 w-3 mr-1" />
+                    <Badge className="bg-orange-500 text-white shadow-lg">
+                      <Sparkles className="h-3 w-3 mr-1 text-white" />
                       NEW
                     </Badge>
                   </div>

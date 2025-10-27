@@ -194,26 +194,24 @@ export default function ProductCard(props: ProductCardProps) {
           </Button>
         </div>
         <div className="p-2 sm:p-4 space-y-2 sm:space-y-3">
-          {/* Price moved above category */}
-          <div className="flex flex-col">
-            <span className="text-lg sm:text-2xl font-bold text-primary">
-              {displayPrice}
-            </span>
-            {originalPrice && (
-              <span className="text-sm text-muted-foreground line-through">
-                {originalPrice}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-muted uppercase tracking-wider truncate">
-            {displayCategory}
-          </p>
           <h3
             className="font-semibold text-sm sm:text-lg text-muted-foreground truncate cursor-pointer hover:text-primary transition-colors"
             onClick={handleProductClick}
           >
             {name}
           </h3>
+
+          {/* Price moved under the title and styled white */}
+          <div className="flex flex-col">
+            <span className="text-lg sm:text-2xl font-bold text-white">
+              {displayPrice}
+            </span>
+            {originalPrice && (
+              <span className="text-sm text-white/80 line-through">
+                {originalPrice}
+              </span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

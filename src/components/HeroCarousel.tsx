@@ -199,7 +199,7 @@ const HeroCarousel = ({ onShopNow }: HeroCarouselProps) => {
                   </p>
                   <Button
                     size="lg"
-                    className="bg-primary hover:bg-accent text-white group shadow-lg"
+                    className="group shadow-lg"
                     onClick={onShopNow}
                   >
                     {slide.buttonText || "Shop Now"}
