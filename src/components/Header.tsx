@@ -37,19 +37,16 @@ export default function Header() {
   const { user, isAuthenticated, isAdmin, logout, getFullName } = useAuth();
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">(
-    "signin"
-  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLoginClick = () => {
-    setAuthModalMode("signin");
     setIsAuthModalOpen(true);
   };
 
   const handleSignUpClick = () => {
-    setAuthModalMode("signup");
-    setIsAuthModalOpen(true);
+    // Navigate to dedicated signup page
+    navigate("/signup");
+    setIsMobileMenuOpen(false);
   };
 
   const handleCloseAuthModal = () => {
@@ -413,7 +410,7 @@ export default function Header() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={handleCloseAuthModal}
-        initialMode={authModalMode}
+        initialMode="signin"
       />
     </>
   );

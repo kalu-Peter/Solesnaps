@@ -10,17 +10,24 @@ import { Eye, EyeOff, Mail, Lock, User, Chrome } from "lucide-react";
 interface SignUpFormProps {
   onSwitchToSignIn: () => void;
   onClose: () => void;
+  // Optional initial values to prefill the form (e.g. from query params)
+  initialValues?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
 }
 
 export default function SignUpForm({
   onSwitchToSignIn,
   onClose,
+  initialValues,
 }: SignUpFormProps) {
   const { register } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+    firstName: initialValues?.firstName || "",
+    lastName: initialValues?.lastName || "",
+    email: initialValues?.email || "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
@@ -115,6 +122,12 @@ export default function SignUpForm({
     // Implement Google OAuth here
   };
 
+  const handleSocialSignUp = async (provider: "google" | "facebook") => {
+    // Placeholder for social sign-in flows. If you later wire Supabase socials,
+    // implement the provider flow here (redirect or popup).
+    console.log(`Social sign up: ${provider}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -127,6 +140,40 @@ export default function SignUpForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Social sign up buttons */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => handleSocialSignUp("google")}
+            className="w-full inline-flex items-center justify-center gap-2 border rounded-md px-4 py-2 bg-white hover:bg-gray-50"
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <path
+                d="M21.35 11.1H12v2.8h5.35c-.23 1.34-1.05 2.48-2.24 3.24v2.7h3.62c2.12-1.96 3.34-4.84 3.34-8.74 0-.62-.06-1.22-.17-1.8z"
+                fill="#4285F4"
+              />
+              <path
+                d="M12 22c2.43 0 4.47-.8 5.96-2.16l-3.62-2.7c-.99.67-2.24 1.07-3.94 1.07-3.02 0-5.58-2.04-6.5-4.78H1.79v2.99C3.27 19.9 7.33 22 12 22z"
+                fill="#34A853"
+              />
+              <path
+                d="M5.5 13.43A7.02 7.02 0 015 12c0-.66.11-1.3.31-1.9V7.1H1.79A10 10 0 001.1 12c0 1.6.37 3.12 1.02 4.47l2.38-3.04z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M12 6.5c1.32 0 2.5.45 3.43 1.34l2.58-2.58C16.45 3.1 14.42 2 12 2 7.33 2 3.27 4.1 1.79 7.1l3.52 2.99C6.42 8.54 8.98 6.5 12 6.5z"
+                fill="#EA4335"
+              />
+            </svg>
+            Continue with Google
+          </button>
+        </div>
         {/* General Error */}
         {errors.general && (
           <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">

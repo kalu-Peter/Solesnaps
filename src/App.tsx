@@ -32,6 +32,7 @@ import About from "./pages/About";
 import Careers from "./pages/Careers";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import SignUp from "./pages/SignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRedirect from "./components/AdminRedirect";
 import GlobalWhatsAppButton from "./components/GlobalWhatsAppButton";
@@ -141,6 +142,14 @@ const App = () => {
                   element={
                     <AdminRedirect>
                       <Privacy />
+                    </AdminRedirect>
+                  }
+                />
+                <Route
+                  path="/signup"
+                  element={
+                    <AdminRedirect>
+                      <SignUp />
                     </AdminRedirect>
                   }
                 />
