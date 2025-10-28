@@ -66,6 +66,7 @@ import {
   Filter,
   Upload,
   X,
+  ToggleLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -424,6 +425,52 @@ const AdminProducts = () => {
         description: error.message || "Failed to delete product",
         variant: "destructive",
       });
+    }
+  };
+
+  const toggleProductStatus = async (product: Product) => {
+    try {
+      const newStatus = !product.is_active;
+
+      // Optimistic UI update
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, is_active: newStatus } : p
+        )
+      );
+
+      const { data: result, error } = await supabaseDb.updateProduct(
+        product.id.toString(),
+        { is_active: newStatus }
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: `Product ${product.name} is now ${
+          newStatus ? "active" : "inactive"
+        }`,
+      });
+
+      // Refresh from server to ensure sync
+      fetchProducts();
+    } catch (error: any) {
+      console.error("Error toggling product status:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update product status",
+        variant: "destructive",
+      });
+
+      // Revert optimistic update
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, is_active: product.is_active } : p
+        )
+      );
     }
   };
 
@@ -1264,6 +1311,14 @@ const AdminProducts = () => {
                             <DropdownMenuItem>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => toggleProductStatus(product)}
+                            >
+                              <ToggleLeft className="mr-2 h-4 w-4" />
+                              {product.is_active
+                                ? "Set Inactive"
+                                : "Set Active"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => openEditDialog(product)}
