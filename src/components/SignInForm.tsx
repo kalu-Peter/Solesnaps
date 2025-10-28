@@ -19,7 +19,7 @@ export default function SignInForm({
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: "",
+    identifier: "",
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -29,10 +29,18 @@ export default function SignInForm({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+    if (!formData.identifier) {
+      newErrors.identifier = "Email or phone is required";
+    } else {
+      const emailRegex = /\S+@\S+\.\S+/;
+      const phoneRegex = /^\+?\d{7,15}$/;
+      if (
+        !emailRegex.test(formData.identifier) &&
+        !phoneRegex.test(formData.identifier)
+      ) {
+        newErrors.identifier =
+          "Enter a valid email or phone (e.g. +15551234567)";
+      }
     }
 
     if (!formData.password) {
@@ -53,7 +61,7 @@ export default function SignInForm({
     setIsLoading(true);
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.identifier, formData.password);
       if (result.success) {
         // Wait a moment for user context to update
         setTimeout(() => {
@@ -115,23 +123,25 @@ export default function SignInForm({
 
         {/* Email Field */}
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium">
-            Email address
+          <Label htmlFor="identifier" className="text-sm font-medium">
+            Email or phone
           </Label>
           <div className="relative">
             <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+              id="identifier"
+              type="text"
+              placeholder="Email or phone (e.g. +15551234567)"
+              value={formData.identifier}
+              onChange={(e) => handleInputChange("identifier", e.target.value)}
+              className={`pl-10 ${
+                errors.identifier ? "border-destructive" : ""
+              }`}
               disabled={isLoading}
             />
           </div>
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email}</p>
+          {errors.identifier && (
+            <p className="text-xs text-destructive">{errors.identifier}</p>
           )}
         </div>
 

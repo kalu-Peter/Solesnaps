@@ -21,30 +21,51 @@ export const isSupabaseEnabled = (): boolean => {
 
 // Auth helpers for Supabase
 export const supabaseAuth = {
-  // Sign up new user
-  signUp: async (email: string, password: string, metadata?: any) => {
+  // Sign up new user (supports email or phone)
+  signUp: async (identifier: string, password: string, metadata?: any) => {
     if (!supabase) throw new Error('Supabase not configured');
-    
+
+    const id = (identifier || '').toString().trim();
+    const numeric = id.replace(/\s+/g, '');
+    const isPhone = /^\+?\d+$/.test(numeric) && !id.includes('@');
+
+    if (isPhone) {
+      const { data, error } = await supabase.auth.signUp({
+        phone: id,
+        password,
+        options: { data: metadata },
+      } as any);
+      return { data, error };
+    }
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: id,
       password,
-      options: {
-        data: metadata
-      }
-    });
-    
+      options: { data: metadata },
+    } as any);
     return { data, error };
   },
 
-  // Sign in user
-  signIn: async (email: string, password: string) => {
+  // Sign in user (supports email or phone)
+  signIn: async (identifier: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
-    
+
+    const id = (identifier || '').toString().trim();
+    const numeric = id.replace(/\s+/g, '');
+    const isPhone = /^\+?\d+$/.test(numeric) && !id.includes('@');
+
+    if (isPhone) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        phone: id,
+        password,
+      } as any);
+      return { data, error };
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
+      email: id,
+      password,
+    } as any);
     return { data, error };
   },
 

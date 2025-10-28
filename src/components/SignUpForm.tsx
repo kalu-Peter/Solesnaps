@@ -27,7 +27,7 @@ export default function SignUpForm({
   const [formData, setFormData] = useState({
     firstName: initialValues?.firstName || "",
     lastName: initialValues?.lastName || "",
-    email: initialValues?.email || "",
+    identifier: initialValues?.email || "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
@@ -49,10 +49,18 @@ export default function SignUpForm({
       newErrors.lastName = "Last name is required";
     }
 
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+    if (!formData.identifier) {
+      newErrors.identifier = "Email or phone is required";
+    } else {
+      const emailRegex = /\S+@\S+\.\S+/;
+      const phoneRegex = /^\+?\d{7,15}$/;
+      if (
+        !emailRegex.test(formData.identifier) &&
+        !phoneRegex.test(formData.identifier)
+      ) {
+        newErrors.identifier =
+          "Enter a valid email or phone (e.g. +15551234567)";
+      }
     }
 
     if (!formData.password) {
@@ -86,12 +94,23 @@ export default function SignUpForm({
     setIsLoading(true);
 
     try {
-      const result = await register({
+      // Determine if identifier is phone or email and call register accordingly
+      const emailRegex = /\S+@\S+\.\S+/;
+      const phoneRegex = /^\+?\d{7,15}$/;
+
+      const payload: any = {
         first_name: formData.firstName.trim(),
         last_name: formData.lastName.trim(),
-        email: formData.email,
         password: formData.password,
-      });
+      };
+
+      if (phoneRegex.test(formData.identifier)) {
+        payload.phone = formData.identifier.trim();
+      } else if (emailRegex.test(formData.identifier)) {
+        payload.email = formData.identifier.trim();
+      }
+
+      const result = await register(payload);
 
       if (result.success) {
         onClose();
@@ -196,25 +215,27 @@ export default function SignUpForm({
           </div>
         </div>
 
-        {/* Email Field */}
+        {/* Email or Phone Field */}
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium">
-            Email address
+          <Label htmlFor="identifier" className="text-sm font-medium">
+            Email or phone
           </Label>
           <div className="relative">
             <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+              id="identifier"
+              type="text"
+              placeholder="Email or phone (e.g. +15551234567)"
+              value={formData.identifier}
+              onChange={(e) => handleInputChange("identifier", e.target.value)}
+              className={`pl-10 ${
+                errors.identifier ? "border-destructive" : ""
+              }`}
               disabled={isLoading}
             />
           </div>
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email}</p>
+          {errors.identifier && (
+            <p className="text-xs text-destructive">{errors.identifier}</p>
           )}
         </div>
 

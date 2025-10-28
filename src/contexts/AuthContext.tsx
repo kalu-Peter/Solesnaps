@@ -28,7 +28,7 @@ interface AuthContextType {
   getFullName: () => string;
   refreshToken: () => Promise<boolean>;
   login: (
-    email: string,
+    identifier: string,
     password: string
   ) => Promise<{ success: boolean; error?: string }>;
   register: (
@@ -47,7 +47,8 @@ interface AuthContextType {
 interface RegisterData {
   first_name: string;
   last_name: string;
-  email: string;
+  email?: string;
+  phone?: string;
   password: string;
 }
 
@@ -274,13 +275,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (
-    email: string,
+    identifier: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       setIsLoading(true);
 
-      const { data, error } = await supabaseAuth.signIn(email, password);
+      const { data, error } = await supabaseAuth.signIn(identifier, password);
 
       if (error) {
         console.error("Login error:", error.message);
@@ -354,132 +355,120 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Clean and validate email before sending to Supabase
-      const cleanEmail = userData.email.toLowerCase().trim();
+      const metadata = {
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+      };
 
-      // Additional email validation
-      const emailRegex =
-        /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+      // If phone is provided, register with phone
+      if (userData.phone) {
+        const phone = userData.phone.trim();
+        // Basic phone validation (international format encouraged)
+        const phoneRegex = /^\+?\d{7,15}$/;
+        if (!phoneRegex.test(phone)) {
+          return {
+            success: false,
+            error: "Please enter a valid phone number.",
+          };
+        }
 
-      if (!emailRegex.test(cleanEmail)) {
+        const { data: authData, error: authError } = await supabaseAuth.signUp(
+          phone,
+          userData.password,
+          metadata
+        );
+
+        if (authError) {
+          console.error("Supabase phone registration error:", authError);
+          return {
+            success: false,
+            error: authError.message || "Registration failed.",
+          };
+        }
+
+        if (authData?.user) {
+          // For phone signups Supabase may send an OTP (no session). Inform the user.
+          if (!authData.session) {
+            return {
+              success: true,
+              error:
+                "Registration initiated. Please check your phone for an OTP to complete signup.",
+            };
+          }
+
+          // If session present, continue like email flow
+          let dbUser = null;
+          try {
+            dbUser = await ensureUserInDatabase(authData.user);
+          } catch (dbError) {
+            console.error(
+              "Database user creation error during phone signup:",
+              dbError
+            );
+          }
+
+          const newUser: User = {
+            id: dbUser?.id || authData.user.id,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            email: authData.user.email || "",
+            role: "customer",
+            phone: authData.user.user_metadata?.phone || phone,
+            avatar_url: authData.user.user_metadata?.avatar_url,
+            date_of_birth: authData.user.user_metadata?.date_of_birth,
+            gender: authData.user.user_metadata?.gender,
+          };
+
+          setUser(newUser);
+          setToken(authData.session.access_token);
+          localStorage.setItem("auth_token", authData.session.access_token);
+          localStorage.setItem("auth_user", JSON.stringify(newUser));
+          localStorage.setItem(
+            "supabase_session",
+            JSON.stringify(authData.session)
+          );
+          if (authData.session.refresh_token) {
+            localStorage.setItem(
+              "refresh_token",
+              authData.session.refresh_token
+            );
+          }
+
+          return { success: true };
+        }
+
+        return { success: false, error: "Phone registration failed." };
+      }
+
+      // Otherwise register with email
+      if (!userData.email) {
         return {
           success: false,
-          error: "Please enter a valid email address.",
+          error: "Email is required for email registration.",
         };
       }
 
-      // Check for patterns that Supabase commonly rejects
-      const localPart = cleanEmail.split("@")[0];
-      const hasConsecutiveNumbers = /\d{2,}/.test(localPart);
-      const domain = cleanEmail.split("@")[1];
-
-      // Warn about potentially problematic patterns
-      if (hasConsecutiveNumbers && localPart.length < 6) {
-        console.warn(
-          "Email pattern warning: Short local part with consecutive numbers might be rejected by Supabase"
-        );
+      const cleanEmail = userData.email.toLowerCase().trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        return { success: false, error: "Please enter a valid email address." };
       }
 
-      console.log("Attempting registration with:", {
-        email: cleanEmail,
-        originalEmail: userData.email,
-        emailLength: cleanEmail.length,
-        hasSpecialChars: /[!#$%&'*+/=?^_`{|}~-]/.test(cleanEmail),
-        domain: cleanEmail.split("@")[1],
-        localPart: cleanEmail.split("@")[0],
-        localPartLength: cleanEmail.split("@")[0].length,
-        hasNumbers: /\d/.test(cleanEmail.split("@")[0]),
-        hasConsecutiveNumbers: /\d\d+/.test(cleanEmail.split("@")[0]),
-        startsWithNumber: /^\d/.test(cleanEmail.split("@")[0]),
-        password: "***hidden***",
-        metadata: {
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-        },
-      });
-
-      // Check if the email might be in an invalid state due to previous failed attempts
-      console.log("Attempting Supabase registration...");
-
-      // Use direct Supabase call for registration
       const { data: authData, error: authError } = await supabaseAuth.signUp(
         cleanEmail,
         userData.password,
-        {
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-        }
+        metadata
       );
 
       if (authError) {
-        console.error("Supabase registration error details:", {
-          message: authError.message,
-          status: authError.status,
-          error: authError,
-          email: cleanEmail,
-        });
-
-        // Provide more specific error messages based on common issues
-        let errorMessage = authError.message;
-
-        if (
-          authError.message.includes("Email address") &&
-          authError.message.includes("invalid")
-        ) {
-          // This specific error usually means:
-          // 1. Email already exists but in a failed/unconfirmed state
-          // 2. Email was previously used and blocked
-          // 3. Supabase has specific validation rules for this email pattern
-
-          console.log("Analyzing email rejection for:", cleanEmail);
-
-          // Check common patterns that Supabase might reject
-          const localPart = cleanEmail.split("@")[0];
-          const hasConsecutiveNumbers = /\d\d+/.test(localPart);
-          const isVeryShort = localPart.length < 3;
-          const hasOnlyNumbersAndLetters = /^[a-z0-9]+$/.test(localPart);
-
-          console.log("Email analysis:", {
-            localPart,
-            hasConsecutiveNumbers,
-            isVeryShort,
-            hasOnlyNumbersAndLetters,
-            recommendation: hasConsecutiveNumbers
-              ? "Try without consecutive numbers"
-              : isVeryShort
-              ? "Try a longer email"
-              : "Try adding dots or different format",
-          });
-
-          errorMessage = `This email address cannot be used. This usually happens when:
-          
-          • The email was previously registered but not confirmed
-          • The email pattern is flagged by Supabase's validation
-          • There are consecutive numbers in the email (like "jogn1")
-          
-          Please try:
-          • A different email address
-          • Adding a dot (like "john.doe@gmail.com")
-          • Using fewer consecutive numbers
-          • Using your actual primary email address`;
-        } else if (authError.message.includes("rate limit")) {
-          errorMessage =
-            "Too many registration attempts. Please wait a few minutes and try again.";
-        } else if (authError.message.includes("already registered")) {
-          errorMessage =
-            "This email address is already registered. Please try logging in instead.";
-        }
-
+        console.error("Supabase registration error:", authError);
         return {
           success: false,
-          error: errorMessage,
+          error: authError.message || "Registration failed.",
         };
       }
 
-      if (authData.user) {
-        console.log("User registered successfully:", authData.user);
-
-        // Check if email confirmation is required
+      if (authData?.user) {
         if (!authData.session && !authData.user.email_confirmed_at) {
           return {
             success: true,
@@ -489,25 +478,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (authData.session) {
-          // User has session (auto-confirmed or confirmed)
-
-          // Create user profile in database and get the correct user record
           let dbUser = null;
           try {
             dbUser = await ensureUserInDatabase(authData.user);
-            console.log("Database user record:", dbUser);
           } catch (dbError) {
             console.error("Database user creation error:", dbError);
-            // Continue anyway as the auth user was created successfully
           }
 
-          // Create user object in the expected format
-          // IMPORTANT: Use the database user.id (which references orders.user_id), not the auth_id
           const newUser: User = {
-            id: dbUser?.id || authData.user.id, // Use database user.id if available
+            id: dbUser?.id || authData.user.id,
             first_name: userData.first_name,
             last_name: userData.last_name,
-            email: userData.email,
+            email: cleanEmail,
             role: "customer",
             phone: authData.user.user_metadata?.phone,
             avatar_url: authData.user.user_metadata?.avatar_url,
@@ -517,8 +499,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           setUser(newUser);
           setToken(authData.session.access_token);
-
-          // Store in localStorage
           localStorage.setItem("auth_token", authData.session.access_token);
           localStorage.setItem("auth_user", JSON.stringify(newUser));
           localStorage.setItem(
@@ -540,12 +520,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               "Registration successful! Please check your email to confirm your account.",
           };
         }
-      } else {
-        return {
-          success: false,
-          error: "Registration failed. Please try again.",
-        };
       }
+
+      return {
+        success: false,
+        error: "Registration failed. Please try again.",
+      };
     } catch (error) {
       console.error("Registration error:", error);
       return {

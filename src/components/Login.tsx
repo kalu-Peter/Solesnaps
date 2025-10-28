@@ -24,7 +24,7 @@ const Login: React.FC<LoginProps> = ({ onClose, redirectTo = "/" }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
+    identifier: "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -40,13 +40,26 @@ const Login: React.FC<LoginProps> = ({ onClose, redirectTo = "/" }) => {
       let result;
 
       if (isLogin) {
-        result = await login(formData.email, formData.password);
+        result = await login(formData.identifier, formData.password);
       } else {
-        result = await register({
-          name: formData.name,
-          email: formData.email,
+        // Determine if identifier is email or phone
+        const emailRegex = /\S+@\S+\.\S+/;
+        const phoneRegex = /^\+?\d{7,15}$/;
+        const payload: any = {
           password: formData.password,
-        });
+        };
+        if (phoneRegex.test(formData.identifier)) {
+          payload.phone = formData.identifier.trim();
+        } else if (emailRegex.test(formData.identifier)) {
+          payload.email = formData.identifier.trim();
+        }
+        // Split the provided full name into first and last name
+        const fullName = (formData.name || "").trim();
+        const nameParts = fullName ? fullName.split(/\s+/) : [];
+        payload.first_name = nameParts.length ? nameParts.shift() : "";
+        payload.last_name = nameParts.length ? nameParts.join(" ") : "";
+
+        result = await register(payload);
       }
 
       if (result.success) {
@@ -75,7 +88,7 @@ const Login: React.FC<LoginProps> = ({ onClose, redirectTo = "/" }) => {
     setError("");
     setFormData({
       name: "",
-      email: "",
+      identifier: "",
       password: "",
     });
   };
@@ -120,15 +133,15 @@ const Login: React.FC<LoginProps> = ({ onClose, redirectTo = "/" }) => {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="identifier">Email or phone</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
+                id="identifier"
+                name="identifier"
+                type="text"
+                placeholder="Email or phone (e.g. +15551234567)"
+                value={formData.identifier}
                 onChange={handleInputChange}
                 className="pl-10"
                 required
