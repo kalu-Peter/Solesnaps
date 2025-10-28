@@ -83,8 +83,17 @@ export const supabaseDb = {
         *,
         categories(id, name),
         product_images(*)
-      `)
-      .eq('is_active', true);
+      `);
+
+    // is_active filter: if provided, use it. If include_inactive is true, skip filtering by is_active
+    if (filters && Object.prototype.hasOwnProperty.call(filters, 'is_active')) {
+      query = query.eq('is_active', filters.is_active);
+    } else if (filters?.include_inactive) {
+      // Do not filter by is_active — return both active and inactive
+    } else {
+      // Default behavior: only active products
+      query = query.eq('is_active', true);
+    }
 
     if (filters?.category) {
       query = query.eq('category_id', filters.category);
@@ -92,6 +101,16 @@ export const supabaseDb = {
 
     if (filters?.featured) {
       query = query.eq('is_featured', true);
+    }
+
+    // Search across name and description
+    if (filters?.search) {
+      const s = filters.search;
+      query = query.or(`name.ilike.%${s}%,description.ilike.%${s}%`);
+    }
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
     }
 
     return await query.order('created_at', { ascending: false });

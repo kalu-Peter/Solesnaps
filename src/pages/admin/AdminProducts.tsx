@@ -126,6 +126,7 @@ const AdminProducts = () => {
   const authenticatedFetch = useAuthenticatedFetch();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -197,6 +198,13 @@ const AdminProducts = () => {
       if (searchTerm) filters.search = searchTerm;
       if (selectedCategory !== "all") {
         filters.category = selectedCategory;
+      }
+      if (selectedStatus !== "all") {
+        // send boolean is_active to backend when filtering by status
+        filters.is_active = selectedStatus === "active";
+      } else {
+        // explicitly request both active and inactive when 'all' is selected
+        filters.include_inactive = true;
       }
       filters.limit = 10;
 
@@ -611,7 +619,7 @@ const AdminProducts = () => {
     if (categories.length > 0) {
       fetchProducts();
     }
-  }, [currentPage, searchTerm, selectedCategory, categories]);
+  }, [currentPage, searchTerm, selectedCategory, selectedStatus, categories]);
 
   // The filtering is now handled server-side, so we just use products directly
   const filteredProducts = products;
@@ -1199,6 +1207,24 @@ const AdminProducts = () => {
                       {category.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              {/* Status Filter */}
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-[150px] text-black ml-2">
+                  <ToggleLeft className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-black">
+                    All Statuses
+                  </SelectItem>
+                  <SelectItem value="active" className="text-black">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="inactive" className="text-black">
+                    Inactive
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
